@@ -72,11 +72,50 @@ services:
       postgres:
         condition: service_healthy
 
-  # api, web, worker: to be built from local Dockerfiles as implementation progresses
+  # Application services (server deployment): enable/build as needed on the target server.
   # api:
   #   build: { context: ., dockerfile: docker/api.Dockerfile }
   #   env_file: .env
-  #   depends_on: [postgres, redis, minio]
+  #   environment:
+  #     DATABASE_URL: ${DATABASE_URL:-postgresql://print3d:print3d@postgres:5432/print3d?schema=public}
+  #     REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+  #   depends_on:
+  #     postgres: { condition: service_healthy }
+  #     redis: { condition: service_healthy }
+  #   ports:
+  #     - "3001:3001"
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    container_name: print3d-worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://print3d:print3d@postgres:5432/print3d?schema=public}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      SLICING_QUEUE_NAME: ${SLICING_QUEUE_NAME:-slicing-jobs}
+      DRAGONFRUIT_MODE: ${DRAGONFRUIT_MODE:-auto}
+      DRAGONFRUIT_CLI_PATH: ${DRAGONFRUIT_CLI_PATH:-/usr/local/bin/dragonfruit}
+      DRAGONFRUIT_ALLOWED_PROFILES_DIR: ${DRAGONFRUIT_ALLOWED_PROFILES_DIR:-/app/config/dragonfruit-profiles}
+      # DRAGONFRUIT_CLI_ATTEMPTS_JSON: ${DRAGONFRUIT_CLI_ATTEMPTS_JSON:-}
+    volumes:
+      - ./storage:/app/storage
+      - ./config/dragonfruit-profiles:/app/config/dragonfruit-profiles
+      - ./config/dragonfruit-plugins:/app/config/dragonfruit-plugins
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # web:
+  #   build: { context: ., dockerfile: docker/web.Dockerfile }
+  #   env_file: .env
+  #   depends_on: [api]
+  #   ports:
+  #     - "3000:3000"
 
 volumes:
   postgres_data:

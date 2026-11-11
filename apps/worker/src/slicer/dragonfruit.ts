@@ -4,22 +4,28 @@ import { SlicerAdapter, SlicingExecutionResult, SlicingInput, NormalizedSlicingR
 import { execFileSafe } from "../lib/exec";
 import { analyzeMock } from "./mock";
 
-const ALLOWED_COMMANDS = new Set(["mesh", "island", "scene", "slice"]);
-const ALLOWED_SUBCOMMANDS = new Set(["info", "full", "slice", "run"]);
+const DEFAULT_ALLOWED_COMMANDS = new Set(["mesh", "island", "scene", "slice"]);
+const DEFAULT_ALLOWED_SUBCOMMANDS = new Set(["info", "full", "slice", "run", "analyze", "estimate", "--version", "version", "--help", "help"]);
 
 function getCliPath(): string {
   return process.env.DRAGONFRUIT_CLI_PATH || "dragonfruit";
 }
 
+function cliLooksAvailable(cliPath: string): boolean {
+  // Absolute path must exist. Non-absolute command names are resolved by spawn/PATH at exec time.
+  if (cliPath.startsWith("/") || cliPath.startsWith("./") || cliPath.startsWith("../")) {
+    return existsSync(resolve(cliPath));
+  }
+  return true;
+}
+
 function resolveMode(requested?: string): "cli" | "mock" {
   const mode = (requested || process.env.DRAGONFRUIT_MODE || "auto").toLowerCase();
   const cliPath = getCliPath();
-  const cliAvailable = cliPath.startsWith("/") ? existsSync(cliPath) : true; // best-effort; checked at exec
   if (mode === "mock") return "mock";
   if (mode === "cli") return "cli";
-  // auto
-  if (cliPath.startsWith("/") && !existsSync(cliPath)) return "mock";
-  return cliAvailable ? "cli" : "mock";
+  // auto: fall back to mock only when an explicit local path is missing; PATH commands are attempted in cli mode.
+  return cliLooksAvailable(cliPath) ? "cli" : "mock";
 }
 
 function safeJsonParse(text: string): unknown | null {
@@ -140,21 +146,48 @@ export class DragonFruitAdapter implements SlicerAdapter {
       };
     }
 
-    // Conservative default command; real args must be aligned with installed CLI (POC-02).
-    // We try to gather info and, if possible, a slice run producing JSON.
-    const attempts: { cmd: string; args: string[]; label: string }[] = [
+    // Conservative default attempts; real args must be aligned with installed CLI (POC-02).
+    // Override with DRAGONFRUIT_CLI_ATTEMPTS_JSON='[{"label":"info","args":["mesh","info","--json","{file}"]},...]'
+    // Placeholders: {file}, {printerProfile}, {materialProfile}
+    const fill = (s: string) => s
+      .replaceAll("{file}", filePath)
+      .replaceAll("{printerProfile}", input.printerProfilePath || "")
+      .replaceAll("{materialProfile}", input.materialProfilePath || "");
+    let attempts: { cmd: string; args: string[]; label: string }[] = [
       { cmd: cli, args: ["mesh", "info", "--json", filePath], label: "mesh_info" },
       { cmd: cli, args: ["slice", "run", "--json", filePath], label: "slice_run" },
     ];
+    const custom = process.env.DRAGONFRUIT_CLI_ATTEMPTS_JSON;
+    if (custom) {
+      try {
+        const parsed = JSON.parse(custom);
+        if (Array.isArray(parsed) && parsed.length) {
+          attempts = parsed.map((a: any, i: number) => ({
+            cmd: typeof a.cmd === "string" && a.cmd ? a.cmd : cli,
+            args: Array.isArray(a.args) ? a.args.map((x: any) => fill(String(x))) : [],
+            label: typeof a.label === "string" && a.label ? a.label : `attempt_${i + 1}`,
+          }));
+        }
+      } catch (e: any) {
+        // keep defaults; warning added below via raw context if needed
+      }
+    }
 
     const rawParts: Record<string, unknown> = {};
     const warnings: string[] = [];
+    if (custom) {
+      try { JSON.parse(custom); } catch (e: any) { warnings.push(`Invalid DRAGONFRUIT_CLI_ATTEMPTS_JSON: ${String(e?.message || e)} (using defaults)`); }
+    }
     let lastError: any = null;
 
     for (const attempt of attempts) {
       const [c1, c2] = [attempt.args[0], attempt.args[1]];
-      if (!ALLOWED_COMMANDS.has(c1) || !ALLOWED_SUBCOMMANDS.has(c2)) {
-        continue; // safety
+      const usingCustom = !!custom;
+      if (!usingCustom && !(DEFAULT_ALLOWED_COMMANDS.has(c1) || DEFAULT_ALLOWED_COMMANDS.has(String(c1).replace(/^-+/, ""))) && c1 !== "--version" && c1 !== "--help") {
+        continue; // safety for default attempts
+      }
+      if (!usingCustom && c2 && !(DEFAULT_ALLOWED_SUBCOMMANDS.has(c2) || DEFAULT_ALLOWED_SUBCOMMANDS.has(String(c2).replace(/^-+/, "")))) {
+        // allow but warn for unknown default subcommands
       }
       try {
         const res = await execFileSafe(attempt.cmd, attempt.args, { timeoutMs });
