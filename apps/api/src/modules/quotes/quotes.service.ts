@@ -72,6 +72,36 @@ export class QuotesService {
     return this.recalcTotals(quoteId);
   }
 
+  async updateItem(quoteId: string, itemId: string, body: any) {
+    const quote = await this.get(quoteId);
+    if (['SENT', 'APPROVED', 'CONVERTED'].includes(quote.status)) throw new BadRequestException('Quote is immutable in current status');
+    const item = await this.prisma.quoteItem.findUnique({ where: { id: itemId } });
+    if (!item || item.quoteId !== quoteId) throw new NotFoundException('Quote item not found');
+
+    let breakdown: any = body.breakdownJson ?? (item.breakdownJson as any);
+    if (body.pricingInput) {
+      const b = calculatePricing(body.pricingInput, body.currency || quote.currency || 'BRL') as any;
+      breakdown = { ...b, inputs: body.pricingInput };
+    }
+    const qty = Number(body.quantity ?? item.quantity ?? 1);
+    const unitPrice = Number(breakdown?.salePrice ?? body.unitPrice ?? item.unitPrice ?? 0);
+
+    await this.prisma.quoteItem.update({
+      where: { id: itemId },
+      data: {
+        fileId: body.fileId !== undefined ? (body.fileId || null) : item.fileId,
+        slicingJobId: body.slicingJobId !== undefined ? (body.slicingJobId || null) : item.slicingJobId,
+        materialId: body.materialId !== undefined ? (body.materialId || null) : item.materialId,
+        description: body.description ?? item.description,
+        quantity: qty,
+        breakdownJson: breakdown ?? undefined,
+        unitPrice: unitPrice as any,
+        totalPrice: (unitPrice * qty) as any,
+      },
+    });
+    return this.recalcTotals(quoteId);
+  }
+
   async recalcTotals(id: string) {
     const quote = await this.get(id);
     const subtotal = quote.items.reduce((sum, it) => sum + Number(it.totalPrice || 0), 0);

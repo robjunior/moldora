@@ -33,7 +33,7 @@
 - [~] MAT-02/PRICE-02/03/06/07 config history/versioning and advanced cases (plate vs model, dedicated unit tests) pending
 
 ## Sprint 4 — Quotes/Commercial/Financial
-- [~] QUO-01/02/07/08 (partial): quote creation, item addition/removal with pricing breakdown and recalculation (API + web detail UI), send with basic immutable snapshot, approve/reject, conversion to order; full state machine/versions/item editing pending
+- [~] QUO-01/02/07/08 (partial): quote creation, item addition/editing/removal with pricing breakdown and recalculation (API + web detail UI), send with basic immutable snapshot, approve/reject, conversion to order; full state machine/versions/history pending
 - [~] QUO-04 proposal HTML available; PDF generation pending
 - [~] PAY-01/02/03/04 (partial): `PaymentProvider` interface + mock provider, charge creation, idempotent webhook, payment/order update, amount-mismatch blocking, mismatch audit — real gateway/card/refund pending
 
@@ -50,7 +50,7 @@
 - `prisma db push` + `prisma/seed.ts` → schema synced and seed applied.
 - API smoke (NestJS, bun): health, dashboard, settings, printers, customers, flow `quote -> item/pricing -> recalc -> send(snapshot) -> approve -> order -> payment -> webhook(CONFIRMED)` with order updated to `PAID` and `production_logs`.
 - Sprint 2 runtime (mock mode): upload file → create slicing job → BullMQ worker processes → `SUCCEEDED` with normalized result persisted; reprocess flow and Files & Slicing web UI validated.
-- Quote/item runtime (mock mode): succeeded slicing job + material/settings prefill → add quote item with `pricingInput`/breakdown → recalc/send snapshot and remove item with recalculation; web quote detail/item form implemented and typechecked.
+- Quote/item runtime (mock mode): succeeded slicing job + material/settings prefill → add/edit/remove quote items with `pricingInput`/breakdown and recalculation, then send snapshot; web quote detail/item form implemented and typechecked.
 - Settings/catalog runtime (temp DB): pricing defaults read/update, material create/list, printer/profile create/list validated via API; web Settings & Catalog UI added.
 
 ## Blockers/environment

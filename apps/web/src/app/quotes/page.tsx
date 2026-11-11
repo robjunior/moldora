@@ -34,6 +34,7 @@ export default function QuotesPage() {
     volumeMl: "", printTimeHours: "", pricePerLiter: "", machineCostPerHour: "",
     energyCost: "", operationCost: "", laborCost: "", lossRate: "", marginRate: "",
   });
+  const [editingItemId, setEditingItemId] = useState<string>("");
 
   async function loadAll() {
     try {
@@ -108,32 +109,67 @@ export default function QuotesPage() {
     finally { setBusy(null); }
   }
 
-  async function addItem(e: React.FormEvent) {
+  function resetItemForm() {
+    setItem({ fileId: "", slicingJobId: "", materialId: "", description: "", quantity: 1, volumeMl: "", printTimeHours: "", pricePerLiter: "", machineCostPerHour: "", energyCost: "", operationCost: "", laborCost: "", lossRate: "", marginRate: "" });
+    setEditingItemId("");
+  }
+
+  function startEditItem(it: any) {
+    const b = it.breakdownJson || {};
+    const inputs = b.inputs || {};
+    setEditingItemId(it.id);
+    setItem({
+      fileId: it.fileId || "", slicingJobId: it.slicingJobId || "", materialId: it.materialId || "",
+      description: it.description || it.file?.originalName || "", quantity: it.quantity || 1,
+      volumeMl: inputs.volumeMl ?? "", printTimeHours: inputs.printTimeHours ?? "",
+      pricePerLiter: inputs.pricePerLiter ?? (it.material?.pricePerLiter ?? ""), machineCostPerHour: inputs.machineCostPerHour ?? (settings.machineCostPerHour ?? ""),
+      energyCost: inputs.energyCost ?? (settings.energyCostPerJob ?? ""), operationCost: inputs.operationCost ?? (settings.operationCostPerJob ?? ""),
+      laborCost: inputs.laborCost ?? (settings.laborCostPerJob ?? ""), lossRate: inputs.lossRate ?? (settings.lossRate ?? ""), marginRate: inputs.marginRate ?? (settings.defaultMarginRate ?? ""),
+    });
+    setNotice(`Editing item ${it.id}`);
+  }
+
+  async function saveItem(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedId) return;
-    setBusy("add-item"); setError(null); setNotice(null);
+    setBusy(editingItemId ? `edit:${editingItemId}` : "add-item"); setError(null); setNotice(null);
     try {
       const pricingInput = {
         volumeMl: n(item.volumeMl), pricePerLiter: n(item.pricePerLiter), printTimeHours: n(item.printTimeHours),
         machineCostPerHour: n(item.machineCostPerHour), energyCost: n(item.energyCost), operationCost: n(item.operationCost),
         laborCost: n(item.laborCost), lossRate: n(item.lossRate), marginRate: n(item.marginRate),
       };
-      await api(`/quotes/${selectedId}/items`, {
-        method: "POST",
-        body: JSON.stringify({
-          fileId: item.fileId || undefined,
-          slicingJobId: item.slicingJobId || undefined,
-          materialId: item.materialId || undefined,
-          description: item.description || undefined,
-          quantity: n(item.quantity, 1),
-          currency: settings.currency || "BRL",
-          pricingInput,
-        }),
-      });
-      await api(`/quotes/${selectedId}/recalc`, { method: "POST", body: JSON.stringify({}) });
+      if (editingItemId) {
+        await api(`/quotes/${selectedId}/items/${editingItemId}`, {
+          method: "POST",
+          body: JSON.stringify({
+            fileId: item.fileId || undefined,
+            slicingJobId: item.slicingJobId || undefined,
+            materialId: item.materialId || undefined,
+            description: item.description || undefined,
+            quantity: n(item.quantity, 1),
+            currency: settings.currency || "BRL",
+            pricingInput,
+          }),
+        });
+        setNotice("Item updated and quote recalculated");
+      } else {
+        await api(`/quotes/${selectedId}/items`, {
+          method: "POST",
+          body: JSON.stringify({
+            fileId: item.fileId || undefined,
+            slicingJobId: item.slicingJobId || undefined,
+            materialId: item.materialId || undefined,
+            description: item.description || undefined,
+            quantity: n(item.quantity, 1),
+            currency: settings.currency || "BRL",
+            pricingInput,
+          }),
+        });
+        setNotice("Item added and quote recalculated");
+      }
       await loadAll(); await loadDetail(selectedId);
-      setNotice("Item added and quote recalculated");
-      setItem({ fileId: "", slicingJobId: "", materialId: "", description: "", quantity: 1, volumeMl: "", printTimeHours: "", pricePerLiter: "", machineCostPerHour: "", energyCost: "", operationCost: "", laborCost: "", lossRate: "", marginRate: "" });
+      resetItemForm();
     } catch (e: any) { setError(e.message); }
     finally { setBusy(null); }
   }
@@ -143,6 +179,7 @@ export default function QuotesPage() {
     setBusy(`rm:${itemId}`); setError(null); setNotice(null);
     try {
       await api(`/quotes/${selectedId}/items/${itemId}/remove`, { method: "POST", body: JSON.stringify({}) });
+      if (editingItemId === itemId) resetItemForm();
       await loadAll(); await loadDetail(selectedId);
       setNotice("Item removed and quote recalculated");
     } catch (e: any) { setError(e.message); }
@@ -198,15 +235,15 @@ export default function QuotesPage() {
                     <div style={{ fontSize: 12, opacity: 0.85 }}>File: {it.file?.originalName || it.fileId || "-"} · Material: {it.material?.name || "-"} · Slicing: {it.slicingJobId || "-"} ({it.slicingJob?.status || "-"})</div>
                     <div>Unit: {it.unitPrice} · Total: {it.totalPrice}</div>
                     {it.breakdownJson && <details><summary>Pricing breakdown</summary><pre style={{ whiteSpace: "pre-wrap", fontSize: 12 }}>{JSON.stringify(it.breakdownJson, null, 2)}</pre></details>}
-                    {canEdit && <div style={{ marginTop: 8 }}><button onClick={() => removeItem(it.id)} disabled={busy===`rm:${it.id}`}>{busy===`rm:${it.id}`?"Removing...":"Remove item"}</button></div>}
+                    {canEdit && <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}><button onClick={() => startEditItem(it)} disabled={!!busy}>Edit item</button><button onClick={() => removeItem(it.id)} disabled={busy===`rm:${it.id}`}>{busy===`rm:${it.id}`?"Removing...":"Remove item"}</button></div>}
                   </div>
                 ))}
                 {!detail.items?.length && <p>No items yet.</p>}
               </div>
 
-              <h3>Add item</h3>
+              <h3>{editingItemId ? `Edit item ${editingItemId.slice(0,8)}...` : "Add item"}</h3>
               {!canEdit ? <p style={{ opacity: 0.8 }}>Quote is not editable in status {detail.status}.</p> : (
-                <form onSubmit={addItem} style={{ display: "grid", gap: 8 }}>
+                <form onSubmit={saveItem} style={{ display: "grid", gap: 8 }}>
                   <select value={item.fileId} onChange={e => prefillFromContext(e.target.value, "", item.materialId)}>
                     <option value="">Select file (optional)</option>
                     {files.map(f => <option key={f.id} value={f.id}>{f.originalName} ({f.id.slice(0,8)})</option>)}
@@ -232,7 +269,10 @@ export default function QuotesPage() {
                     <label>Loss rate<input value={item.lossRate} onChange={e=>setItem({...item, lossRate:e.target.value})} /></label>
                     <label>Margin rate<input value={item.marginRate} onChange={e=>setItem({...item, marginRate:e.target.value})} /></label>
                   </div>
-                  <button type="submit" disabled={busy==="add-item"}>{busy==="add-item"?"Adding...":"Add item & recalc"}</button>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button type="submit" disabled={busy==="add-item" || (!!editingItemId && busy===`edit:${editingItemId}`)}>{editingItemId ? (busy===`edit:${editingItemId}`?"Updating...":"Update item & recalc") : (busy==="add-item"?"Adding...":"Add item & recalc")}</button>
+                    {editingItemId && <button type="button" onClick={resetItemForm}>Cancel edit</button>}
+                  </div>
                   <p style={{ fontSize: 12, opacity: 0.75 }}>Pricing inputs are sent to the API (volume, costs, margin/loss). Selecting a succeeded slicing job and material helps prefill volume/time/price-per-liter; defaults come from pricing settings.</p>
                 </form>
               )}
