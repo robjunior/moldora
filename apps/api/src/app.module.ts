@@ -13,6 +13,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { StorageModule } from './modules/storage/storage.module';
 import { SimpleAuthGuard } from './common/simple-auth.guard';
 
 @Module({
@@ -29,6 +30,7 @@ import { SimpleAuthGuard } from './common/simple-auth.guard';
     PaymentsModule,
     SettingsModule,
     DashboardModule,
+    StorageModule,
   ],
   controllers: [HealthController],
   providers: [
