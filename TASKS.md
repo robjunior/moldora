@@ -27,7 +27,7 @@
 
 ## Sprint 3 — Materials/Pricing
 - [x] MAT-01/03/04 Base: materials/printers/profiles CRUD via API (initial seed)
-- [x] PRICE-01/04/05 (partial): pricing engine in quote service (`volumeMl`, losses, costs, margin), calculation breakdown in `QuoteItem.breakdownJson`, totals recalculation
+- [x] PRICE-01/04/05: quote pricing now uses shared `@print3d/pricing` engine (`volumeMl`, losses, costs, margin), stores calculation breakdown + inputs in `QuoteItem.breakdownJson`, and recalculates totals
 - [~] MAT-02/PRICE-02/03/06/07 config history/versioning and advanced cases (plate vs model, dedicated unit tests) pending
 
 ## Sprint 4 — Quotes/Commercial/Financial
@@ -40,7 +40,7 @@
 - [~] N8N-01/02 base n8n infra active; event emission/consumption and workflows pending
 
 ## Sprint 6 — Dashboard/Reports/Quality
-- [x] DASH-01/02 (partial): `/api/v1/dashboard` endpoint with indicators and recent items (validated in smoke test)
+- [~] DASH-01/02: `/api/v1/dashboard` endpoint with indicators/recent items and web pages connected to API for dashboard/customers/quotes/orders (API-validated smoke); richer UI/reporting pending
 - [ ] QA-01, SEC-01 full hardening, REL-01 backups/runbook, DOC-01 final pending
 
 ## Validations executed

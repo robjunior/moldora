@@ -1,25 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { calculatePricing } from '@print3d/pricing';
 import { PrismaService } from '../../prisma/prisma.service';
-
-function round4(n: number) { return Math.round((n + Number.EPSILON) * 10000) / 10000; }
-function calculatePricing(input: any, currency = 'BRL') {
-  const volumeMl = Number(input.volumeMl || 0);
-  const pricePerLiter = Number(input.pricePerLiter || 0);
-  const printTimeHours = Number(input.printTimeHours || 0);
-  const machineCostPerHour = Number(input.machineCostPerHour || 0);
-  const energyCost = Number(input.energyCost || 0);
-  const operationCost = Number(input.operationCost || 0);
-  const laborCost = Number(input.laborCost || 0);
-  const lossRate = Number(input.lossRate || 0);
-  const marginRate = Math.min(Math.max(Number(input.marginRate || 0), 0), 0.99);
-  const effectiveVolumeMl = volumeMl * (1 + lossRate);
-  const materialCost = (effectiveVolumeMl / 1000) * pricePerLiter;
-  const machineCost = printTimeHours * machineCostPerHour;
-  const lossCost = ((volumeMl * lossRate) / 1000) * pricePerLiter;
-  const totalCost = materialCost + energyCost + machineCost + operationCost + laborCost;
-  const salePrice = marginRate >= 1 ? totalCost : totalCost / (1 - marginRate);
-  return { materialCost: round4(materialCost), energyCost: round4(energyCost), machineCost: round4(machineCost), operationCost: round4(operationCost), laborCost: round4(laborCost), lossCost: round4(lossCost), totalCost: round4(totalCost), marginRate: round4(marginRate), salePrice: round4(salePrice), currency, inputs: { volumeMl, pricePerLiter, printTimeHours, machineCostPerHour, energyCost, operationCost, laborCost, lossRate } };
-}
 
 @Injectable()
 export class QuotesService {
@@ -40,13 +21,14 @@ export class QuotesService {
 
   async addItem(quoteId: string, body: any) {
     const quote = await this.get(quoteId);
-    if (['SENT','APPROVED','CONVERTED'].includes(quote.status)) throw new BadRequestException('Quote is immutable in current status');
+    if (['SENT', 'APPROVED', 'CONVERTED'].includes(quote.status)) throw new BadRequestException('Quote is immutable in current status');
     let breakdown: any = body.breakdownJson;
     if (!breakdown && body.pricingInput) {
-      breakdown = calculatePricing(body.pricingInput, body.currency || 'BRL');
+      const b = calculatePricing(body.pricingInput, body.currency || 'BRL') as any;
+      breakdown = { ...b, inputs: body.pricingInput };
     }
     const qty = Number(body.quantity || 1);
-    const unitPrice = breakdown?.salePrice ?? Number(body.unitPrice || 0);
+    const unitPrice = Number(breakdown?.salePrice ?? body.unitPrice ?? 0);
     return this.prisma.quoteItem.create({
       data: {
         quoteId,

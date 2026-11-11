@@ -3,7 +3,7 @@ import { FilesService } from './files.service';
 import { StorageService } from '../storage/storage.service';
 import { createHash } from 'crypto';
 
-const ALLOWED = ['stl','3mf','obj','vox'];
+const ALLOWED = ['stl', '3mf', 'obj', 'vox'];
 
 @Controller('files')
 export class FilesController {
@@ -25,9 +25,10 @@ export class FilesController {
     let customerId = '';
     for (const part of parts) {
       if (!part || part === '--\r\n' || part === '--') continue;
-      const [rawHeaders, ...rest] = part.split('\r\n\r\n');
-      if (!rawHeaders || rest.length === 0) continue;
-      const content = rest.join('\r\n\r\n');
+      const sep = part.indexOf('\r\n\r\n');
+      if (sep === -1) continue;
+      const rawHeaders = part.slice(0, sep);
+      const content = part.slice(sep + 4);
       const trimmed = content.endsWith('\r\n') ? content.slice(0, -2) : content;
       const nameMatch = /name="([^"]+)"/.exec(rawHeaders);
       const filenameMatch = /filename="([^"]*)"/.exec(rawHeaders);
