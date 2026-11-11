@@ -12,10 +12,6 @@
     "baseUrl": "./",
     "incremental": true,
     "strict": true,
-    "skipLibCheck": true,
-    "paths": {
-      "@print3d/pricing": ["../../packages/pricing/src/index.ts"],
-      "@print3d/contracts": ["../../packages/contracts/src/index.ts"]
-    }
+    "skipLibCheck": true
   }
 }

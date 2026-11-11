@@ -13,11 +13,14 @@
 - Health: `GET /api/v1/health` (public)
 
 ## Worker (DragonFruit)
-- Mock PoC: `DRAGONFRUIT_MODE=mock bun apps/worker/src/run-once.ts --file <path> --no-persist`
-- Real CLI: provide `DRAGONFRUIT_CLI_PATH` and authorized profiles in `DRAGONFRUIT_ALLOWED_PROFILES_DIR`; run in isolated container.
+- Queue: BullMQ on Redis (`SLICING_QUEUE_NAME`, default `slicing-jobs`); API enqueues jobs, worker consumes and persists status/results to `SlicingJob`.
+- Mock PoC (one-off): `DRAGONFRUIT_MODE=mock bun apps/worker/src/run-once.ts --file <path> --no-persist`
+- Queue worker: `cd apps/worker && bun run dev` (or `bun src/index.ts`) with `REDIS_URL`, `DATABASE_URL`, and `DRAGONFRUIT_MODE` configured.
+- Real CLI: provide `DRAGONFRUIT_CLI_PATH` and authorized profiles in `DRAGONFRUIT_ALLOWED_PROFILES_DIR`; run in an isolated container with least privilege.
 
 ## Smoke flow (validated)
-`quote -> add item/pricing -> recalc -> send(snapshot) -> approve -> create order -> create payment -> webhook(CONFIRMED)` updates payment/order (`PAID`) and production logs.
+- Quote/payment: `quote -> add item/pricing -> recalc -> send(snapshot) -> approve -> create order -> create payment -> webhook(CONFIRMED)` updates payment/order (`PAID`) and production logs.
+- Slicing runtime (mock mode): upload file → create slicing job → worker processes queue job → `SUCCEEDED` with normalized result persisted.
 
 ## Storage
 - Current local fallback: `storage/uploads/` (private on filesystem). MinIO/S3 should be enabled with accessible image and temporary URL integration.

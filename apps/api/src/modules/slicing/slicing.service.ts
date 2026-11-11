@@ -43,8 +43,41 @@ export class SlicingService implements OnModuleDestroy {
   }
 
   getJob(id: string) { return this.prisma.slicingJob.findUnique({ where: { id }, include: { file: true } }); }
-  listByFile(fileId: string) { return this.prisma.slicingJob.findMany({ where: { fileId }, orderBy: { createdAt: 'desc' } }); }
+  listByFile(fileId: string) { return this.prisma.slicingJob.findMany({ where: { fileId }, orderBy: { createdAt: 'desc' }, include: { file: true } }); }
   list() { return this.prisma.slicingJob.findMany({ orderBy: { createdAt: 'desc' }, take: 50, include: { file: true } }); }
+
+  async reprocess(id: string) {
+    const job = await this.prisma.slicingJob.findUnique({ where: { id }, include: { file: true } });
+    if (!job) throw new NotFoundException('Slicing job not found');
+    if (job.status === 'QUEUED' || job.status === 'RUNNING') return job;
+    if (!job.file) throw new NotFoundException('File not found');
+
+    const updated = await this.prisma.slicingJob.update({
+      where: { id },
+      data: {
+        status: 'QUEUED',
+        errorMessage: null,
+        rawResult: null as any,
+        normalizedResult: null as any,
+        startedAt: null,
+        finishedAt: null,
+        durationMs: null,
+      },
+      include: { file: true },
+    });
+
+    const filePath = await this.storage.getPath(job.file.storageKey);
+    try { await this.queue.remove(id); } catch {}
+    await this.queue.add('analyze', {
+      jobRecordId: job.id,
+      fileId: job.fileId,
+      filePath,
+      fileFormat: job.file.format,
+      mode: job.mode,
+    }, { jobId: `${job.id}-${Date.now()}`, attempts: 3, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: 100, removeOnFail: 100 });
+
+    return updated;
+  }
 
   async onModuleDestroy() {
     await this.queue?.close();

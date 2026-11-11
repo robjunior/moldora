@@ -6,6 +6,7 @@ export default function Home() {
       <ul>
         <li><a href="/dashboard">Dashboard</a></li>
         <li><a href="/customers">Customers</a></li>
+        <li><a href="/files">Files & Slicing</a></li>
         <li><a href="/quotes">Quotes</a></li>
         <li><a href="/orders">Orders</a></li>
       </ul>
