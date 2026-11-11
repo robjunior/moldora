@@ -1,0 +1,15 @@
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { QuotesService } from './quotes.service';
+
+@Controller('quotes')
+export class QuotesController {
+  constructor(private readonly service: QuotesService) {}
+  @Get() list() { return this.service.list(); }
+  @Post() create(@Body() body: any) { return this.service.create(body); }
+  @Get(':id') get(@Param('id') id: string) { return this.service.get(id); }
+  @Post(':id/items') addItem(@Param('id') id: string, @Body() body: any) { return this.service.addItem(id, body); }
+  @Post(':id/recalc') recalc(@Param('id') id: string) { return this.service.recalcTotals(id); }
+  @Post(':id/send') send(@Param('id') id: string) { return this.service.send(id); }
+  @Post(':id/approve') approve(@Param('id') id: string) { return this.service.approve(id); }
+  @Post(':id/reject') reject(@Param('id') id: string) { return this.service.reject(id); }
+}
