@@ -207,7 +207,8 @@ export default function FilesPage() {
                 <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
                   <button onClick={() => createJob(f.id)} disabled={busy === `job:${f.id}`}>{busy === `job:${f.id}` ? "Queuing..." : "Create slicing job"}</button>
                   <button onClick={() => setSelectedFileId(f.id)}>View / Preview</button>
-                  <a href={`${API_BASE}/files/${f.id}/content`} target="_blank" rel="noreferrer">Download / Open</a>
+                  <a href={`${API_BASE}/files/${f.id}/content?download=1`} target="_blank" rel="noreferrer">Download</a>
+                  <a href={`${API_BASE}/files/${f.id}/content`} target="_blank" rel="noreferrer">Open</a>
                 </div>
               </div>
             ))}
@@ -221,7 +222,7 @@ export default function FilesPage() {
             <div style={{ border: "1px solid #222", borderRadius: 8, padding: 12, marginBottom: 12 }}>
               <h3 style={{ marginTop: 0, marginBottom: 8 }}>Preview</h3>
               <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 8 }}>
-                {selectedFile.originalName} ({selectedFile.format}) · <a href={`${API_BASE}/files/${selectedFile.id}/content`} target="_blank" rel="noreferrer">Download</a>
+                {selectedFile.originalName} ({selectedFile.format}) · <a href={`${API_BASE}/files/${selectedFile.id}/content?download=1`} target="_blank" rel="noreferrer">Download</a> · <a href={`${API_BASE}/files/${selectedFile.id}/content`} target="_blank" rel="noreferrer">Open</a>
               </div>
               {selectedPreviewable ? (
                 <ModelViewer file={selectedFile} />
