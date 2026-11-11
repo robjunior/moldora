@@ -38,7 +38,7 @@
 - [~] PAY-01/02/03/04 (partial): `PaymentProvider` interface + mock provider, charge creation, idempotent webhook, payment/order update, amount-mismatch blocking, mismatch audit — real gateway/card/refund pending
 
 ## Sprint 5 — Orders/Production/Automation
-- [x] ORD-01/02/03 (partial): order creation from approved quote, listing/query, manual status update, `production_logs`
+- [x] ORD-01/02/03 (partial): order creation from approved quote, listing/detail with quote/customer/payments/logs, guarded status transitions (`PENDING→AWAITING_PAYMENT→PAID→IN_PRODUCTION→COMPLETED`, `CANCELLED`), manual status updates with notes, `production_logs`; web Orders page with detail panel, production log and payment history, note-aware status actions. Automated/role-based production workflow and richer operational tooling pending.
 - [~] N8N-01/02 base n8n infra active; event emission/consumption and workflows pending
 
 ## Sprint 6 — Dashboard/Reports/Quality
@@ -56,6 +56,7 @@
 - Quote proposal/PDF (temp DB, built API): `GET /api/v1/quotes/:id/proposal.pdf` returned `200 application/pdf` (valid `%PDF-1.3`, inline disposition) for existing quote while HTML proposal remained `200`; web quotes list includes PDF link; API/web/worker typechecks passed.
 - Quote state/version smoke (temp DB/Redis, built API): create→add item→send (snapshot)→reject→expire→reopen (status `DRAFT`, version bumped to 2, `snapshotJson` preserved `previousSnapshot`/`reopenedFrom`)→resend→approve (snapshot) validated; invalid `approve→reject` transition returned guarded `400 Invalid quote status transition`; proposal HTML/PDF remained valid; API/web/worker typechecks passed.
 - Quote history smoke (temp DB/Redis, built API): create→add item→send→reject→reopen recorded `QUOTE_CREATED/ITEM_ADDED/SENT/REJECTED/REOPENED` events; `GET /api/v1/quotes/:id/history` and quote detail `history` returned matching events; API/web/worker typechecks passed.
+- Orders flow smoke (temp DB/Redis, built API): approved quote → order created (`AWAITING_PAYMENT`, initial production log) → `PAID` (note recorded) → `IN_PRODUCTION` → invalid rollback to `AWAITING_PAYMENT` guarded with `400 Invalid order status transition` → `COMPLETED` with accumulated production logs; order list/detail reflected updates; API/web/worker typechecks passed.
 
 ## Blockers/environment
 - **DragonFruit CLI missing** in this environment — slicing is validated in `mock` mode only; real PoC requires a container/image with the CLI + authorized profiles/plugins.
