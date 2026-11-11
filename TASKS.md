@@ -22,7 +22,7 @@
 
 ## Sprint 2 — 3D Files and Processing
 - [~] STL-01 Real upload/validation (multipart upload, format/size/hash, local storage, metadata registration via API) — deeper content validation/magic bytes and MinIO/S3 pending
-- [~] STL-04/05 DragonFruit adapter integration + job persistence + API→BullMQ enqueueing and worker queue consumer wired (DB record, queue dispatch, status/result persistence in worker) — end-to-end runtime validation with real file paths, reprocess/DLQ hardening pending
+- [x] STL-04/05 (MVP runtime): DragonFruit adapter integration + job persistence + API→BullMQ enqueueing and worker queue consumer wired; end-to-end validated (mock mode): upload file → create slicing job → worker processes → `SUCCEEDED` with normalized result persisted
 - [ ] STL-07 3D viewer pending
 
 ## Sprint 3 — Materials/Pricing
