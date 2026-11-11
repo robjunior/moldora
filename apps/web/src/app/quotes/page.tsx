@@ -238,7 +238,19 @@ export default function QuotesPage() {
                 <button onClick={() => action(detail.id, "reopen")} disabled={!canReopen || !!busy}>Reopen (new draft)</button>
                 <button onClick={() => createOrder(detail.id)} disabled={!canCreateOrder || !!busy}>Create Order</button>
               </div>
-              {detail.snapshotJson && <details style={{ marginTop: 8 }}><summary>Snapshot / history metadata</summary><pre style={{ whiteSpace: "pre-wrap", fontSize: 12 }}>{JSON.stringify(detail.snapshotJson, null, 2)}</pre></details>}
+              {detail.snapshotJson && <details style={{ marginTop: 8 }}><summary>Snapshot metadata</summary><pre style={{ whiteSpace: "pre-wrap", fontSize: 12 }}>{JSON.stringify(detail.snapshotJson, null, 2)}</pre></details>}
+              <details style={{ marginTop: 8 }}>
+                <summary>Quote history ({detail.history?.length || 0})</summary>
+                <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
+                  {(detail.history || []).map((h: any) => (
+                    <div key={h.id} style={{ border: "1px solid #222", borderRadius: 6, padding: 8, fontSize: 12 }}>
+                      <div><b>{h.action}</b> · {new Date(h.createdAt).toLocaleString()}</div>
+                      {h.metadata && <pre style={{ whiteSpace: "pre-wrap", margin: "6px 0 0" }}>{JSON.stringify(h.metadata, null, 2)}</pre>}
+                    </div>
+                  ))}
+                  {!(detail.history?.length) && <p style={{ opacity: 0.8, margin: 0 }}>No history events recorded yet.</p>}
+                </div>
+              </details>
               <h3>Items ({detail.items?.length || 0})</h3>
               <div style={{ display: "grid", gap: 8 }}>
                 {(detail.items || []).map((it: any) => (

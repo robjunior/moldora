@@ -8,6 +8,7 @@ export class QuotesController {
   @Get() list() { return this.service.list(); }
   @Post() create(@Body() body: any) { return this.service.create(body); }
   @Get(':id') get(@Param('id') id: string) { return this.service.get(id); }
+  @Get(':id/history') history(@Param('id') id: string) { return this.service.history(id); }
   @Get(':id/proposal')
   async proposal(@Param('id') id: string, @Res() res: Response) {
     const html = await this.service.proposalHtml(id);

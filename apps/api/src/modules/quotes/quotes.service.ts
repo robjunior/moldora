@@ -27,15 +27,34 @@ export class QuotesService {
 
   list() { return this.prisma.quote.findMany({ include: { customer: true, items: true }, orderBy: { createdAt: 'desc' } }); }
 
-  async create(data: { customerId: string; notes?: string; validityDays?: number }) {
-    const validityUntil = data.validityDays ? new Date(Date.now() + Number(data.validityDays) * 86400000) : null;
-    return this.prisma.quote.create({ data: { customerId: data.customerId, notes: data.notes, status: 'DRAFT', validityUntil } });
+  private async logEvent(quoteId: string, action: string, metadata?: any) {
+    try {
+      await this.prisma.auditLog.create({ data: { action, entityType: 'Quote', entityId: quoteId, metadata: metadata ?? undefined } });
+    } catch {}
   }
 
-  async get(id: string) {
+  async history(id: string) {
+    await this.getBase(id);
+    return this.prisma.auditLog.findMany({ where: { entityType: 'Quote', entityId: id }, orderBy: { createdAt: 'desc' } });
+  }
+
+  private async getBase(id: string) {
     const q = await this.prisma.quote.findUnique({ where: { id }, include: { items: { include: { slicingJob: true, file: true, material: true } }, customer: true, orders: true } });
     if (!q) throw new NotFoundException('Quote not found');
     return q;
+  }
+
+  async create(data: { customerId: string; notes?: string; validityDays?: number }) {
+    const validityUntil = data.validityDays ? new Date(Date.now() + Number(data.validityDays) * 86400000) : null;
+    const q = await this.prisma.quote.create({ data: { customerId: data.customerId, notes: data.notes, status: 'DRAFT', validityUntil } });
+    await this.logEvent(q.id, 'QUOTE_CREATED', { status: q.status, version: q.version, customerId: q.customerId });
+    return q;
+  }
+
+  async get(id: string) {
+    const q = await this.getBase(id);
+    const history = await this.prisma.auditLog.findMany({ where: { entityType: 'Quote', entityId: id }, orderBy: { createdAt: 'desc' }, take: 100 });
+    return { ...q, history };
   }
 
   async addItem(quoteId: string, body: any) {
@@ -48,7 +67,7 @@ export class QuotesService {
     }
     const qty = Number(body.quantity || 1);
     const unitPrice = Number(breakdown?.salePrice ?? body.unitPrice ?? 0);
-    return this.prisma.quoteItem.create({
+    const created = await this.prisma.quoteItem.create({
       data: {
         quoteId,
         fileId: body.fileId,
@@ -61,6 +80,8 @@ export class QuotesService {
         totalPrice: (unitPrice * qty) as any,
       },
     });
+    await this.logEvent(quoteId, 'QUOTE_ITEM_ADDED', { itemId: created.id, description: created.description, quantity: created.quantity, unitPrice: Number(created.unitPrice || 0), totalPrice: Number(created.totalPrice || 0) });
+    return created;
   }
 
   async removeItem(quoteId: string, itemId: string) {
@@ -69,6 +90,7 @@ export class QuotesService {
     const item = await this.prisma.quoteItem.findUnique({ where: { id: itemId } });
     if (!item || item.quoteId !== quoteId) throw new NotFoundException('Quote item not found');
     await this.prisma.quoteItem.delete({ where: { id: itemId } });
+    await this.logEvent(quoteId, 'QUOTE_ITEM_REMOVED', { itemId: item.id, description: item.description, quantity: item.quantity });
     return this.recalcTotals(quoteId);
   }
 
@@ -99,14 +121,15 @@ export class QuotesService {
         totalPrice: (unitPrice * qty) as any,
       },
     });
+    await this.logEvent(quoteId, 'QUOTE_ITEM_UPDATED', { itemId, description: body.description ?? item.description, quantity: qty, unitPrice, totalPrice: unitPrice * qty });
     return this.recalcTotals(quoteId);
   }
 
   async recalcTotals(id: string) {
-    const quote = await this.get(id);
+    const quote = await this.getBase(id);
     const subtotal = quote.items.reduce((sum, it) => sum + Number(it.totalPrice || 0), 0);
     await this.prisma.quote.update({ where: { id }, data: { subtotal: subtotal as any, total: subtotal as any } });
-    return this.get(id);
+    return this.getBase(id);
   }
 
   private assertTransition(from: string, to: string) {
@@ -146,33 +169,41 @@ export class QuotesService {
     if (!quote.items.length) throw new BadRequestException('Quote must have items');
     this.assertTransition(quote.status, 'SENT');
     const snapshot = this.buildSnapshot({ ...quote, status: 'SENT' }, 'sent');
-    return this.prisma.quote.update({ where: { id }, data: { status: 'SENT', sentAt: new Date(), snapshotJson: snapshot as any } });
+    const updated = await this.prisma.quote.update({ where: { id }, data: { status: 'SENT', sentAt: new Date(), snapshotJson: snapshot as any } });
+    await this.logEvent(id, 'QUOTE_SENT', { from: quote.status, to: 'SENT', version: quote.version, total: Number(updated.total || 0), itemCount: quote.items.length });
+    return this.get(id);
   }
 
   async approve(id: string) {
-    const quote = await this.get(id);
+    const quote = await this.getBase(id);
     this.assertTransition(quote.status, 'APPROVED');
     const snapshot = quote.snapshotJson || this.buildSnapshot({ ...quote, status: 'APPROVED' }, 'approved');
-    return this.prisma.quote.update({ where: { id }, data: { status: 'APPROVED', approvedAt: new Date(), snapshotJson: snapshot as any } });
+    await this.prisma.quote.update({ where: { id }, data: { status: 'APPROVED', approvedAt: new Date(), snapshotJson: snapshot as any } });
+    await this.logEvent(id, 'QUOTE_APPROVED', { from: quote.status, to: 'APPROVED', version: quote.version });
+    return this.get(id);
   }
 
   async reject(id: string) {
-    const quote = await this.get(id);
+    const quote = await this.getBase(id);
     this.assertTransition(quote.status, 'REJECTED');
-    return this.prisma.quote.update({ where: { id }, data: { status: 'REJECTED', rejectedAt: new Date() } });
+    await this.prisma.quote.update({ where: { id }, data: { status: 'REJECTED', rejectedAt: new Date() } });
+    await this.logEvent(id, 'QUOTE_REJECTED', { from: quote.status, to: 'REJECTED', version: quote.version });
+    return this.get(id);
   }
 
   async expire(id: string) {
-    const quote = await this.get(id);
+    const quote = await this.getBase(id);
     this.assertTransition(quote.status, 'EXPIRED');
-    return this.prisma.quote.update({ where: { id }, data: { status: 'EXPIRED' } });
+    await this.prisma.quote.update({ where: { id }, data: { status: 'EXPIRED' } });
+    await this.logEvent(id, 'QUOTE_EXPIRED', { from: quote.status, to: 'EXPIRED', version: quote.version });
+    return this.get(id);
   }
 
   async reopen(id: string) {
-    const quote = await this.get(id);
+    const quote = await this.getBase(id);
     this.assertTransition(quote.status, 'DRAFT');
     const prev = quote.snapshotJson ? { previousSnapshot: quote.snapshotJson, reopenedFrom: quote.status, reopenedAt: new Date().toISOString() } : { reopenedFrom: quote.status, reopenedAt: new Date().toISOString() };
-    return this.prisma.quote.update({
+    const updated = await this.prisma.quote.update({
       where: { id },
       data: {
         status: 'DRAFT',
@@ -183,6 +214,8 @@ export class QuotesService {
         snapshotJson: prev as any,
       },
     });
+    await this.logEvent(id, 'QUOTE_REOPENED', { from: quote.status, to: 'DRAFT', previousVersion: quote.version, version: updated.version });
+    return this.get(id);
   }
 
   async proposalData(id: string) {

@@ -33,7 +33,7 @@
 - [~] MAT-02/PRICE-02/03/06/07 config history/versioning and advanced cases (plate vs model, dedicated unit tests) pending
 
 ## Sprint 4 — Quotes/Commercial/Financial
-- [~] QUO-01/02/07/08 (partial): quote creation, item addition/editing/removal with pricing breakdown and recalculation (API + web detail UI), guarded status transitions (`send/approve/reject/expire/reopen`), immutable snapshots on send/approve, reopen-to-draft flow with version bump and preserved previous snapshot metadata, web detail actions/version/timestamps/history viewer, conversion to order; full state machine matrix persistence/audit history and versioned line-item history pending
+- [~] QUO-01/02/07/08 (partial): quote creation, item addition/editing/removal with pricing breakdown and recalculation (API + web detail UI), guarded status transitions (`send/approve/reject/expire/reopen`), immutable snapshots on send/approve, reopen-to-draft flow with version bump and preserved previous snapshot metadata, audit-log history events (`QUOTE_CREATED/ITEM_ADDED|UPDATED|REMOVED/SENT/APPROVED/REJECTED/EXPIRED/REOPENED`) via `GET /api/v1/quotes/:id/history` and included in quote detail, web history viewer; full dedicated history/version tables and versioned line-item snapshots pending
 - [~] QUO-04 proposal HTML and PDF generation available (`GET /api/v1/quotes/:id/proposal` and `/proposal.pdf` via pdfkit) with web proposal/PDF links; richer branding/layout/attachments pending
 - [~] PAY-01/02/03/04 (partial): `PaymentProvider` interface + mock provider, charge creation, idempotent webhook, payment/order update, amount-mismatch blocking, mismatch audit — real gateway/card/refund pending
 
@@ -55,6 +55,7 @@
 - Files content/preview (temp DB, built API): `GET /api/v1/files/:id/content` streamed stored file with correct inline/attachment headers (`200`) and returned `404` for missing records; upload rejected invalid 3MF content and accepted valid STL in smoke test; web Files page gained download/open actions and STL/OBJ/3MF Three.js preview component (3MF via `ThreeMFLoader`, Z-up correction) with reset view, wireframe/grid-axes toggles and bounds display; API/web/worker typechecks passed.
 - Quote proposal/PDF (temp DB, built API): `GET /api/v1/quotes/:id/proposal.pdf` returned `200 application/pdf` (valid `%PDF-1.3`, inline disposition) for existing quote while HTML proposal remained `200`; web quotes list includes PDF link; API/web/worker typechecks passed.
 - Quote state/version smoke (temp DB/Redis, built API): create→add item→send (snapshot)→reject→expire→reopen (status `DRAFT`, version bumped to 2, `snapshotJson` preserved `previousSnapshot`/`reopenedFrom`)→resend→approve (snapshot) validated; invalid `approve→reject` transition returned guarded `400 Invalid quote status transition`; proposal HTML/PDF remained valid; API/web/worker typechecks passed.
+- Quote history smoke (temp DB/Redis, built API): create→add item→send→reject→reopen recorded `QUOTE_CREATED/ITEM_ADDED/SENT/REJECTED/REOPENED` events; `GET /api/v1/quotes/:id/history` and quote detail `history` returned matching events; API/web/worker typechecks passed.
 
 ## Blockers/environment
 - **DragonFruit CLI missing** in this environment — slicing is validated in `mock` mode only; real PoC requires a container/image with the CLI + authorized profiles/plugins.
