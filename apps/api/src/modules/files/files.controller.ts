@@ -1,4 +1,5 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Post, Query, Req, Res, StreamableFile } from '@nestjs/common';
+import { Response } from 'express';
 import { FilesService } from './files.service';
 import { StorageService } from '../storage/storage.service';
 import { createHash } from 'crypto';
@@ -54,4 +55,21 @@ export class FilesController {
   @Post() register(@Body() body: any) { return this.service.registerUpload(body); }
   @Get() list(@Query('customerId') customerId?: string) { return this.service.list(customerId); }
   @Get(':id') get(@Param('id') id: string) { return this.service.get(id); }
+
+  @Get(':id/content')
+  async content(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {
+    const file = await this.service.get(id);
+    const { stream } = await this.storage.openReadStream(file.storageKey);
+    const mime: Record<string, string> = {
+      STL: 'model/stl',
+      OBJ: 'model/obj',
+      '3MF': 'model/3mf',
+      VOX: 'application/octet-stream',
+    };
+    res.set({
+      'Content-Type': mime[file.format] || 'application/octet-stream',
+      'Content-Disposition': `inline; filename="${(file.originalName || 'file').replace(/"/g, '')}"`,
+    });
+    return new StreamableFile(stream);
+  }
 }

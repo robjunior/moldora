@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { promises as fs } from 'fs';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { promises as fs, createReadStream } from 'fs';
 import { join, dirname } from 'path';
 import { randomUUID } from 'crypto';
 
@@ -16,5 +16,11 @@ export class StorageService {
     return { storageKey: key, path: full };
   }
 
-  async getPath(storageKey: string) { return join(this.baseDir, storageKey); }
+  getPath(storageKey: string) { return join(this.baseDir, storageKey); }
+
+  async openReadStream(storageKey: string) {
+    const path = this.getPath(storageKey);
+    try { await fs.access(path); } catch { throw new NotFoundException('Stored file not found'); }
+    return { path, stream: createReadStream(path) };
+  }
 }
