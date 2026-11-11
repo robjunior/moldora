@@ -33,6 +33,8 @@ export class MockPaymentProvider implements PaymentProvider {
   async getPayment(id: string): Promise<PaymentResult> { return { id, status: 'PENDING', provider: this.name }; }
   async refund(id: string): Promise<RefundResult> { return { id, status: 'REFUNDED', raw: {} }; }
   async validateWebhook(payload: any): Promise<PaymentEvent> {
-    return { providerPaymentId: payload?.data?.id || payload?.id, status: payload?.status || 'CONFIRMED', amount: payload?.amount, currency: payload?.currency || 'BRL', raw: payload, valid: payload?.secret === process.env.N8N_WEBHOOK_SECRET || true };
+    const secret = process.env.N8N_WEBHOOK_SECRET || 'mock-secret';
+    const valid = !!payload?.secret && payload.secret === secret;
+    return { providerPaymentId: payload?.data?.id || payload?.id, status: payload?.status || 'CONFIRMED', amount: payload?.amount, currency: payload?.currency || 'BRL', raw: payload, valid };
   }
 }
