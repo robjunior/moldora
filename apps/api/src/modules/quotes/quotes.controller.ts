@@ -15,6 +15,7 @@ export class QuotesController {
     res.send(html);
   }
   @Post(':id/items') addItem(@Param('id') id: string, @Body() body: any) { return this.service.addItem(id, body); }
+  @Post(':id/items/:itemId/remove') removeItem(@Param('id') id: string, @Param('itemId') itemId: string) { return this.service.removeItem(id, itemId); }
   @Post(':id/recalc') recalc(@Param('id') id: string) { return this.service.recalcTotals(id); }
   @Post(':id/send') send(@Param('id') id: string) { return this.service.send(id); }
   @Post(':id/approve') approve(@Param('id') id: string) { return this.service.approve(id); }

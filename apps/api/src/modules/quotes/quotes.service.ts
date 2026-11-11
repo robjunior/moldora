@@ -63,6 +63,15 @@ export class QuotesService {
     });
   }
 
+  async removeItem(quoteId: string, itemId: string) {
+    const quote = await this.get(quoteId);
+    if (['SENT', 'APPROVED', 'CONVERTED'].includes(quote.status)) throw new BadRequestException('Quote is immutable in current status');
+    const item = await this.prisma.quoteItem.findUnique({ where: { id: itemId } });
+    if (!item || item.quoteId !== quoteId) throw new NotFoundException('Quote item not found');
+    await this.prisma.quoteItem.delete({ where: { id: itemId } });
+    return this.recalcTotals(quoteId);
+  }
+
   async recalcTotals(id: string) {
     const quote = await this.get(id);
     const subtotal = quote.items.reduce((sum, it) => sum + Number(it.totalPrice || 0), 0);

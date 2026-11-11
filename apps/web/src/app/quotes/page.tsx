@@ -138,6 +138,17 @@ export default function QuotesPage() {
     finally { setBusy(null); }
   }
 
+  async function removeItem(itemId: string) {
+    if (!selectedId) return;
+    setBusy(`rm:${itemId}`); setError(null); setNotice(null);
+    try {
+      await api(`/quotes/${selectedId}/items/${itemId}/remove`, { method: "POST", body: JSON.stringify({}) });
+      await loadAll(); await loadDetail(selectedId);
+      setNotice("Item removed and quote recalculated");
+    } catch (e: any) { setError(e.message); }
+    finally { setBusy(null); }
+  }
+
   return (
     <main style={{ padding: 32, maxWidth: 1200, margin: "0 auto" }}>
       <h1>Quotes</h1>
@@ -187,6 +198,7 @@ export default function QuotesPage() {
                     <div style={{ fontSize: 12, opacity: 0.85 }}>File: {it.file?.originalName || it.fileId || "-"} · Material: {it.material?.name || "-"} · Slicing: {it.slicingJobId || "-"} ({it.slicingJob?.status || "-"})</div>
                     <div>Unit: {it.unitPrice} · Total: {it.totalPrice}</div>
                     {it.breakdownJson && <details><summary>Pricing breakdown</summary><pre style={{ whiteSpace: "pre-wrap", fontSize: 12 }}>{JSON.stringify(it.breakdownJson, null, 2)}</pre></details>}
+                    {canEdit && <div style={{ marginTop: 8 }}><button onClick={() => removeItem(it.id)} disabled={busy===`rm:${it.id}`}>{busy===`rm:${it.id}`?"Removing...":"Remove item"}</button></div>}
                   </div>
                 ))}
                 {!detail.items?.length && <p>No items yet.</p>}
