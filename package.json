@@ -1,0 +1,28 @@
+{
+  "name": "print3d-quotes",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Sistema de Orçamentos de Impressão 3D (MVP) - monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "echo 'Build scripts will be added per app/package'",
+    "lint": "echo 'Lint not configured yet'",
+    "test": "echo 'Tests not configured yet'",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "poc:worker": "node apps/worker/dist/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0"
+  }
+}

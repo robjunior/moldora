@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.next/
+.env
+.env.*
+!.env.example
+coverage/
+*.log
+.DS_Store
+storage/uploads/*
+!storage/uploads/.gitkeep
+storage/artifacts/*
+!storage/artifacts/.gitkeep
+.prisma/
+tmp/
+docker-data/
