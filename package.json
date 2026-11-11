@@ -2,7 +2,7 @@
   "name": "print3d-quotes",
   "private": true,
   "version": "0.1.0",
-  "description": "Sistema de Orçamentos de Impressão 3D (MVP) - monorepo",
+  "description": "3D Printing Quote System (MVP) - monorepo",
   "workspaces": [
     "apps/*",
     "packages/*"

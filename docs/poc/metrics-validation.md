@@ -1,32 +1,31 @@
-# PoC — Validação de Métricas (Geométrico vs Consumo em Resina)
+# PoC — Metrics Validation (Geometric vs Resin Consumption)
 
-> **Status:** validação teórica/preparatória registrada. Execução empírica com DragonFruit CLI real **pendente** (CLI não disponível no ambiente atual).
+> **Status:** theoretical/preparatory validation recorded. Empirical execution with the real DragonFruit CLI is **pending** (CLI not available in the current environment).
 
-## Objetivo
-Definir como o sistema deve estimar consumo de resina e tempo, evitando usar volume geométrico como proxy direto quando houver dados de slice/cena.
+## Objective
+Ensure the pricing engine uses the correct consumption basis (not merely STL geometric volume), complying with the technical specification.
 
-## Hipóteses e regras
-1. **Volume geométrico (mesh/STL)**: útil para sanity check e informações do modelo, mas **não representa consumo real**.
-2. **Consumo real estimado** deve priorizar, quando disponível:
-   - resultado de **cena preparada e fatiada** (`scene slice`/`slice run`) com perfil de impressora e resina;
-   - métricas de volume de resina/material reportadas pelo slicer.
-3. **Ajustes obrigatórios no motor de precificação** (parâmetros configuráveis):
-   - suportes/raft, hollowing/drenagem, perdas de processo, margem de segurança.
-4. **Placa vs modelo:** em múltiplas peças na mesma impressão, separar custo da placa e rateio por item.
+## Definitions
+1. **Geometric volume (mesh/STL)**: useful for sanity checks and model information, but **does not represent real consumption**.
+2. **Estimated resin consumption (slice/scene)**: priority basis for pricing when available.
+   - result from a **prepared and sliced scene** (`scene slice`/`slice run`) with printer and resin profile;
+   - resin/material volume metrics reported by the slicer.
+3. **Calibration factors**: configured loss/waste margin applied on top of the slicer-reported base.
 
-## Casos de validação planejados (executar quando CLI disponível)
-| Caso | Arquivo/Cena | Perfil/Resina | Volume geométrico (mesh) | Volume/tempo do slice | Observações |
-|---|---|---|---:|---:|---|
-| V1 | Peça sólida simples | a definir | pendente | pendente | baseline |
-| V2 | Peça oca com furos de drenagem | a definir | pendente | pendente | hollowing reduz consumo; depende de preparo |
-| V3 | Múltiplas peças na mesma placa | a definir | pendente | pendente | validar rateio placa vs item |
+## Test plan (execute when CLI is available)
+| Case | File/Scene | Profile/Resin | Geometric volume (mesh) | Slice volume/time | Notes |
+|---|---|---|---|---|---|
+| V1 | Simple solid (cube/calibration) | to define | pending | pending | expected low geometric/slice difference |
+| V2 | Hollow piece with drain holes | to define | pending | pending | hollowing reduces consumption; depends on preparation |
+| V3 | Piece with supports | to define | pending | pending | supports increase consumption/time |
+| V4 | Multi-part scene (if supported) | to define | pending | pending | validate per-plate vs per-model cost |
 
-## Conclusões preliminares (para implementação)
-- Contrato normalizado deve expor `volumeCm3` (geométrico) e `volumeMl` (consumo/estimativa de slice) como campos distintos e opcionais.
-- `capabilitiesGaps`/`warnings` devem sinalizar quando apenas volume geométrico estiver disponível.
-- Motor de preços deve falhar de forma explícita ou exigir confirmação administrativa se não houver base confiável de consumo (policy configurável), nunca assumir silently.
+## Preliminary conclusions (for implementation)
+- The slicing contract must store `volumeMl` (resin), `printTimeSec`, and `raw` for auditing.
+- Pricing engine must fail explicitly or require administrative confirmation if there is no reliable consumption basis (configurable policy), never assume silently.
+- Losses/supports/post-processing are applied as configurable factors and recorded in the calculation breakdown.
 
-## Evidências a coletar na execução real
-- Comandos usados, versão do DragonFruit, perfis/plugins.
-- JSON bruto de saída, tempos, camadas, volume reportado.
-- Comparação percentual: geométrico vs slice vs consumo esperado com perdas.
+## Acceptance criteria (POC-07)
+- Documented empirical comparison: geometric vs slice vs expected consumption with losses.
+- Ingestion/normalization mapping defined for real CLI fields.
+- Risks and gaps recorded in `capabilitiesGaps`.

@@ -46,8 +46,8 @@ export async function analyzeMock(input: SlicingInput): Promise<SlicingExecution
         "cli_output_metrics",
       ],
       warnings: [
-        "Resultado MOCK para validação de pipeline; não usar para precificação real.",
-        "volumeMl é estimativa ingênua a partir de volume geométrico simulado.",
+        "MOCK result for pipeline validation; do not use for real pricing.",
+        "volumeMl is a naive estimate derived from simulated geometric volume.",
       ],
     },
     raw: { mock: true, input: { fileId: input.fileId, filePath: input.filePath } },

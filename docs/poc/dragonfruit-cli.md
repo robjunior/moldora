@@ -1,51 +1,49 @@
-# PoC — DragonFruit CLI: Capacidades, Integração e Limitações
+# DragonFruit CLI — PoC Capabilities and Contract
 
-> **Status (10 nov 2026, ambiente local `/home/rob`)**: binário `dragonfruit`/`DragonFruit` **não encontrado** no PATH. Este documento consolida o contrato de integração pretendido com base na especificação fornecida/documentação oficial citada e define o comportamento do worker em modos `cli` e `mock`. A validação com CLI real deve ser concluída em ambiente onde o DragonFruit esteja instalado (container dedicado recomendado).
+> **Status (Nov 10 2026, local environment `/home/rob`)**: `dragonfruit`/`DragonFruit` binary **not found** in PATH. This document consolidates the intended integration contract based on the provided specification/cited official documentation and defines worker behavior in `cli` and `mock` modes. Validation with the real CLI must be completed in an environment where DragonFruit is installed (dedicated container recommended).
 
-## 1. Objetivo da integração
-Executar análise/fatiamento de modelos de resina (SLA/MSLA) de forma headless, isolada do backend web, produzindo um **JSON normalizado** para o motor de precificação.
+## 1. PoC objective
+Run headless analysis/slicing of resin (SLA/MSLA) models, isolated from the web backend, producing a **normalized JSON** for the pricing engine.
 
-## 2. Comandos de interesse (conforme documentação referenciada)
-| Comando | Uso esperado | Saídas relevantes |
+## 2. Expected/targeted commands (headless)
+| Command | Purpose | Expected output (target) |
 |---|---|---|
-| `mesh info` | Informações geométricas/volume do modelo | volume, dimensões, malhas (a confirmar) |
-| `island full` | Análise de ilhas | ilhas/problemas (a confirmar) |
-| `scene slice` | Processar cena com perfil de impressora e material | resumo de impressão (a confirmar) |
-| `slice run` | Executar fatiamento | JSON com camadas, tempo de processamento, métricas (a confirmar) |
-| `slice info` | Formatos/perfis suportados | capacidades do ambiente |
+| `mesh info` | Read geometry/model information | JSON with volumes/dimensions (to confirm) |
+| `island full` | Full support/island analysis | support/issue data (to confirm) |
+| `scene slice` | Process scene with printer and material profile | print summary (to confirm) |
+| `slice run` | Execute slicing | JSON with layers, processing time, metrics (to confirm) |
+| `--version` | Version/availability | version string |
 
-> **Nota:** flags, formato exato de argumentos e schema de saída devem ser confirmados no ambiente alvo (POC-02 complementar). O adapter não deve assumir campos não observados.
+> **Note:** flags, exact argument format, and output schema must be confirmed in the target environment (complementary POC-02). The adapter must not assume unobserved fields.
 
-## 3. Contrato interno normalizado (`packages/contracts`)
-Campos alvo:
-- `printTimeSec`, `volumeMl`, `volumeCm3`, `layers`, `estimatedWeightG` (quando aplicável), `supportsUsed`, `material`, `printProfile`, `quantity`
-- `mode`: `cli|mock`
-- `metrics`: mapa livre para métricas adicionais reais
-- `capabilitiesGaps[]`: campos esperados não fornecidos pelo CLI
-- `warnings[]`: limitações/ressalvas (ex.: volume geométrico ≠ consumo real)
+## 3. Normalized output contract (`NormalizedSlicingResult`)
+Minimum fields for pricing: `volumeMl`, `printTimeSec`, `printProfile/material` when available, `raw` preserved, and `capabilitiesGaps[]`.
+Additional fields:
+- `metrics`: free-form map for real additional metrics
+- `capabilitiesGaps[]`: expected fields not provided by the CLI
+- `warnings[]`: fallbacks, assumptions, execution failures
 
-## 4. Execução segura (worker)
-- **Sem shell arbitrário:** execução via spawn com argumentos em array; nunca concatenar input do usuário em string de shell.
-- **Whitelist:** apenas comandos/perfis autorizados e caminhos resolvidos pelo sistema (IDs → paths permitidos em diretório de perfis).
-- **Isolamento:** processo em worker/container separado da API.
-- **Timeout:** `SLICING_JOB_TIMEOUT_MS` (default 10 min), kill em estouro.
-- **Auditoria:** armazenar `inputParams`, stdout/stderr bruto, exit code, duração e resultado normalizado.
+## 4. Isolation and security policy
+- **No arbitrary shell:** execution via spawn with array args; never concatenate user input into a shell string.
+- **Whitelist:** only authorized commands/profiles and system-resolved paths (IDs → paths allowed in profiles directory).
+- **Isolation:** process in a worker/container separate from the API.
+- **Timeout:** `SLICING_JOB_TIMEOUT_MS` (default 10 min), kill on overflow.
+- **Idempotency:** reprocessing allowed per job; output persisted by job.
 
-## 5. Modos de operação
-- `DRAGONFRUIT_MODE=cli`: exige binário disponível; falha se ausente.
-- `DRAGONFRUIT_MODE=mock`: gera resultado determinístico/estimado para validar pipeline, schema e persistência (não usar para precificação real).
-- `DRAGONFRUIT_MODE=auto`: usa CLI se encontrado, senão mock com warning explícito.
+## 5. Execution modes
+- `DRAGONFRUIT_MODE=cli`: requires installed CLI; fails with structured error if unavailable.
+- `DRAGONFRUIT_MODE=mock`: generates deterministic/estimated result to validate pipeline, schema, and persistence (do not use for real pricing).
+- `DRAGONFRUIT_MODE=auto`: uses CLI if found, otherwise mock with explicit warning.
 
-## 6. Lacunas conhecidas / riscos
-- CLI não instalado neste host: **validação real pendente** em container de PoC.
-- Perfis de impressora, resinas e plugins necessários podem ser obrigatórios para `slice run`/`scene slice`.
-- Volume geométrico do STL difere de volume consumido (suportes, raft, hollowing, drenagem, perdas) — fonte prioritária deve ser resultado de cena fatiada.
-- Custo por placa vs por modelo em impressões múltiplas requer modelagem específica.
-- Licença AGPL-3.0-or-later: usar como ferramenta externa; avaliar obrigações antes de distribuir/modificar.
+## 6. Known gaps (current environment)
+- CLI not installed on this host: **real validation pending** in PoC container.
+- Required printer profiles, resins, and plugins may be mandatory for `slice run`/`scene slice`.
+- Real resin consumption may differ from geometric volume (see `metrics-validation.md`).
+- Cost per plate vs per model in multi-print scenarios requires specific modeling.
 
-## 7. Próximos passos para fechar POC-02 em ambiente com CLI
-1. Construir imagem Docker com DragonFruit CLI + perfis/plugins.
-2. Executar `slice info` e documentar formatos/perfis.
-3. Rodar `mesh info` e `slice run` em 2–3 STLs de referência.
-4. Capturar JSON real e ajustar normalizador.
-5. Comparar métricas com `docs/poc/metrics-validation.md`.
+## 7. Next steps to close POC-02 in a CLI-enabled environment
+1. Build Docker image with DragonFruit CLI + profiles/plugins.
+2. Capture `--help`/`--version` and real JSON outputs.
+3. Run `mesh info` and `slice run` on 2–3 reference STLs.
+4. Adjust parser/normalizer for the real schema.
+5. Compare metrics with `docs/poc/metrics-validation.md`.

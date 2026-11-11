@@ -15,7 +15,7 @@ export class OrdersService {
     if (existing) return existing;
     const order = await this.prisma.order.create({ data: { quoteId, customerId: quote.customerId, status: 'AWAITING_PAYMENT' } });
     await this.prisma.quote.update({ where: { id: quoteId }, data: { status: 'CONVERTED' } });
-    await this.prisma.productionLog.create({ data: { orderId: order.id, status: 'AWAITING_PAYMENT', message: 'Pedido criado a partir de orçamento aprovado' } });
+    await this.prisma.productionLog.create({ data: { orderId: order.id, status: 'AWAITING_PAYMENT', message: 'Order created from approved quote' } });
     return order;
   }
 

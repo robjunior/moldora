@@ -31,7 +31,7 @@ export class PaymentsService {
     const updated = await this.prisma.payment.update({ where: { id: payment.id }, data: { status: (event.status as any) || payment.status, paidAt: event.status === 'CONFIRMED' ? new Date() : payment.paidAt, webhookEvents: payload as any } });
     if (event.status === 'CONFIRMED') {
       await this.prisma.order.update({ where: { id: payment.orderId }, data: { status: 'PAID' } });
-      await this.prisma.productionLog.create({ data: { orderId: payment.orderId, status: 'PAID', message: 'Pagamento confirmado via webhook' } });
+      await this.prisma.productionLog.create({ data: { orderId: payment.orderId, status: 'PAID', message: 'Payment confirmed via webhook' } });
     }
     return { ok: true, payment: updated };
   }

@@ -105,17 +105,17 @@ export class QuotesService {
   async proposalHtml(id: string) {
     const q = await this.get(id);
     const snap: any = q.snapshotJson || q;
-    const items = (snap.items || q.items || []).map((it: any) => `<tr><td>${it.description || it.file?.originalName || 'Item'}</td><td>${it.quantity}</td><td>R$ ${Number(it.unitPrice||0).toFixed(2)}</td><td>R$ ${Number(it.totalPrice||0).toFixed(2)}</td></tr>`).join('');
-    return `<!doctype html><html><head><meta charset="utf-8"><title>Proposta ${q.id}</title>
+    const items = (snap.items || q.items || []).map((it: any) => `<tr><td>${it.description || it.file?.originalName || 'Item'}</td><td>${it.quantity}</td><td>BRL ${Number(it.unitPrice||0).toFixed(2)}</td><td>BRL ${Number(it.totalPrice||0).toFixed(2)}</td></tr>`).join('');
+    return `<!doctype html><html><head><meta charset="utf-8"><title>Proposal ${q.id}</title>
 <style>body{font-family:Arial,sans-serif;margin:32px;color:#111}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f5f5f5}.total{font-size:20px;margin-top:16px}</style></head>
-<body><h1>Proposta Comercial - Impressão 3D</h1>
-<p><b>Orçamento:</b> ${q.id} &nbsp; <b>Status:</b> ${q.status} &nbsp; <b>Versão:</b> ${q.version}</p>
-<p><b>Cliente:</b> ${q.customer?.name || ''} ${q.customer?.email ? '('+q.customer.email+')':''}</p>
-<p><b>Validade:</b> ${q.validityUntil ? new Date(q.validityUntil).toLocaleDateString('pt-BR') : 'Não definida'}</p>
-<table><thead><tr><th>Descrição</th><th>Qtd</th><th>Unit.</th><th>Total</th></tr></thead><tbody>${items}</tbody></table>
-<p class="total"><b>Total:</b> R$ ${Number(snap.total ?? q.total ?? 0).toFixed(2)}</p>
-<p><b>Observações:</b> ${q.notes || '-'}</p>
-<hr><small>Gerado em ${new Date().toLocaleString('pt-BR')}. Valores congelados no snapshot quando emitido/aprovado.</small>
+<body><h1>Commercial Proposal - 3D Printing</h1>
+<p><b>Quote:</b> ${q.id} &nbsp; <b>Status:</b> ${q.status} &nbsp; <b>Version:</b> ${q.version}</p>
+<p><b>Customer:</b> ${q.customer?.name || ''} ${q.customer?.email ? '('+q.customer.email+')':''}</p>
+<p><b>Valid until:</b> ${q.validityUntil ? new Date(q.validityUntil).toLocaleDateString('en-US') : 'Not defined'}</p>
+<table><thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead><tbody>${items}</tbody></table>
+<p class="total"><b>Total:</b> BRL ${Number(snap.total ?? q.total ?? 0).toFixed(2)}</p>
+<p><b>Notes:</b> ${q.notes || '-'}</p>
+<hr><small>Generated at ${new Date().toLocaleString('en-US')}. Values are frozen in the snapshot when issued/approved.</small>
 </body></html>`;
   }
 }

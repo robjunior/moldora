@@ -1,34 +1,31 @@
-# Runbook Operacional (MVP)
+# Operations Runbook (MVP)
 
-## Serviços (Docker Compose)
-- Subir base: `docker compose up -d postgres redis n8n`
-- Status: `docker compose ps`
-- Logs: `docker compose logs -f <service>`
+## Services (Docker Compose)
+- `postgres` (5432), `redis` (6379), `n8n` (5678) active.
+- `minio` currently disabled in compose due to registry/image pull restriction in this environment.
 
-## Banco de dados
-- Schema sync (dev): `DATABASE_URL=... bunx prisma db push`
+## Database
+- Sync schema (dev/MVP): `cd /home/rob/Projects/print3d-quotes && DATABASE_URL=... bunx prisma db push`
 - Seed: `DATABASE_URL=... bun prisma/seed.ts`
-- Backup (exemplo): `docker exec print3d-postgres pg_dump -U print3d print3d > backup.sql`
-- Restore (exemplo): `cat backup.sql | docker exec -i print3d-postgres psql -U print3d print3d`
 
-## API (dev)
-- Rodar: `cd apps/api && DATABASE_URL=... API_PORT=3001 bun src/main.ts`
-- Health: `GET /api/v1/health` (público)
-- Auth MVP: se `ADMIN_API_TOKEN` estiver definido, enviar `Authorization: Bearer <token>`; sem token definido, guard permite em modo dev.
+## API
+- Dev start (example): `cd apps/api && DATABASE_URL=... REDIS_URL=... API_PORT=3001 bun src/main.ts`
+- Health: `GET /api/v1/health` (public)
 
-## Worker / DragonFruit
-- PoC mock: `DRAGONFRUIT_MODE=mock bun apps/worker/src/run-once.ts --file /path/model.stl --no-persist`
-- CLI real: configurar `DRAGONFRUIT_CLI_PATH`, perfis autorizados em `DRAGONFRUIT_ALLOWED_PROFILES_DIR`, usar modo `cli|auto` em worker/container dedicado.
-- Falhas: verificar `slicing_jobs` (status/erro/raw/normalized) e logs do worker.
+## Worker (DragonFruit)
+- Mock PoC: `DRAGONFRUIT_MODE=mock bun apps/worker/src/run-once.ts --file <path> --no-persist`
+- Real CLI: provide `DRAGONFRUIT_CLI_PATH` and authorized profiles in `DRAGONFRUIT_ALLOWED_PROFILES_DIR`; run in isolated container.
+
+## Smoke flow (validated)
+`quote -> add item/pricing -> recalc -> send(snapshot) -> approve -> create order -> create payment -> webhook(CONFIRMED)` updates payment/order (`PAID`) and production logs.
 
 ## Storage
-- Fallback local atual: `storage/uploads/` (privado no filesystem). MinIO/S3 deve ser habilitado com imagem acessível e integração de URLs temporárias.
+- Current local fallback: `storage/uploads/` (private on filesystem). MinIO/S3 should be enabled with accessible image and temporary URL integration.
 
 ## n8n
-- UI: `http://localhost:5678`
-- Backend deve emitir eventos autenticados; n8n não deve alterar estados comerciais/financeiros.
+- Container active (`http://localhost:5678`). Workflows and event webhooks to be configured.
+- Backend should emit authenticated events; n8n must not change commercial/financial states.
 
-## Incidentes comuns
-- **Porta em uso (3001):** encerrar processo anterior antes de subir API.
-- **MinIO image pull bloqueado:** manter desabilitado no compose e usar storage local até resolver registry/imagem.
-- **Webhook duplicado/divergente:** tratado como idempotente ou bloqueado por mismatch de valor (auditado).
+## Known environment blockers
+- **DragonFruit CLI missing:** mock mode only.
+- **MinIO image pull blocked:** keep disabled in compose and use local storage until registry/image access is resolved.

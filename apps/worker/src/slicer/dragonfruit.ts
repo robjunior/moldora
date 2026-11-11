@@ -87,7 +87,7 @@ export class DragonFruitAdapter implements SlicerAdapter {
     if (mode === "mock") {
       const res = await analyzeMock(input);
       if ((input.mode || process.env.DRAGONFRUIT_MODE || "auto") === "auto") {
-        res.normalized?.warnings.push("DragonFruit CLI não encontrado; modo auto caiu para mock.");
+        res.normalized?.warnings.push("DragonFruit CLI not found; auto mode fell back to mock.");
       }
       return res;
     }
@@ -97,7 +97,7 @@ export class DragonFruitAdapter implements SlicerAdapter {
       const finishedAt = new Date();
       return {
         status: "FAILED",
-        error: { message: `DragonFruit CLI não encontrado em ${cli}`, code: "CLI_NOT_FOUND" },
+        error: { message: `DragonFruit CLI not found at ${cli}`, code: "CLI_NOT_FOUND" },
         startedAt: startedAt.toISOString(),
         finishedAt: finishedAt.toISOString(),
         durationMs: finishedAt.getTime() - startedAt.getTime(),
@@ -111,7 +111,7 @@ export class DragonFruitAdapter implements SlicerAdapter {
       if (!profilesDir) return; // until profiles are configured, rely on caller authorization
       const resolved = resolve(p);
       const base = resolve(profilesDir);
-      if (!resolved.startsWith(base)) throw new Error(`Perfil não autorizado: ${p}`);
+      if (!resolved.startsWith(base)) throw new Error(`Profile not allowed: ${p}`);
     };
     try {
       validateAllowedPath(input.printerProfilePath);
@@ -133,7 +133,7 @@ export class DragonFruitAdapter implements SlicerAdapter {
       const finishedAt = new Date();
       return {
         status: "FAILED",
-        error: { message: `Arquivo não encontrado: ${filePath}`, code: "FILE_NOT_FOUND" },
+        error: { message: `File not found: ${filePath}`, code: "FILE_NOT_FOUND" },
         startedAt: startedAt.toISOString(),
         finishedAt: finishedAt.toISOString(),
         durationMs: finishedAt.getTime() - startedAt.getTime(),
@@ -161,15 +161,15 @@ export class DragonFruitAdapter implements SlicerAdapter {
         const parsed = safeJsonParse(res.stdout) ?? { stdout: res.stdout, stderr: res.stderr };
         rawParts[attempt.label] = { ...res, parsed };
         if (res.timedOut) {
-          throw new Error(`Timeout em ${attempt.label}`);
+          throw new Error(`Timeout in ${attempt.label}`);
         }
         if (res.exitCode !== 0) {
-          warnings.push(`${attempt.label} retornou exit code ${res.exitCode}`);
+          warnings.push(`${attempt.label} returned exit code ${res.exitCode}`);
         }
       } catch (e: any) {
         lastError = e;
         rawParts[attempt.label] = { error: String(e?.message || e) };
-        warnings.push(`Falha em ${attempt.label}: ${String(e?.message || e)}`);
+        warnings.push(`Failure in ${attempt.label}: ${String(e?.message || e)}`);
       }
     }
 
@@ -184,7 +184,7 @@ export class DragonFruitAdapter implements SlicerAdapter {
       return {
         status: "FAILED",
         raw: rawParts,
-        error: { message: lastError?.message || "Nenhuma saída utilizável do DragonFruit CLI", code: "NO_USABLE_OUTPUT", details: rawParts },
+        error: { message: lastError?.message || "No usable output from DragonFruit CLI", code: "NO_USABLE_OUTPUT", details: rawParts },
         startedAt: startedAt.toISOString(),
         finishedAt: finishedAt.toISOString(),
         durationMs: finishedAt.getTime() - startedAt.getTime(),

@@ -1,55 +1,55 @@
-# Sistema de Orçamentos de Impressão 3D (MVP)
+# 3D Printing Quote System (MVP)
 
-Plataforma interna para gestão de orçamentos e pedidos de impressão 3D em resina (SLA/MSLA), com análise técnica via **DragonFruit CLI** executado em worker isolado.
+Internal platform for managing 3D resin (SLA/MSLA) printing quotes and orders, with technical analysis via **DragonFruit CLI** running in an isolated worker.
 
-## Estado atual
-- **Milestone 0 (PoC DragonFruit CLI):** estrutura e contrato em implementação. Binário DragonFruit não detectado no ambiente atual; o worker suporta `DRAGONFRUIT_MODE=mock` para validar pipeline/normalização/persistência e `DRAGONFRUIT_MODE=cli|auto` quando o CLI estiver disponível.
-- Sprints 1–6: em andamento incremental conforme backlog técnico.
+## Current status
+- **Milestone 0 (DragonFruit CLI PoC):** structure and contract in progress. DragonFruit binary not detected in the current environment; the worker supports `DRAGONFRUIT_MODE=mock` to validate the pipeline/normalization/persistence and `DRAGONFRUIT_MODE=cli|auto` when the CLI is available.
+- Sprints 1–6: incremental progress according to the technical backlog.
 
-## Arquitetura (alvo)
+## Target architecture
 - **Frontend:** Next.js + TypeScript + Tailwind + shadcn/ui
-- **Backend:** Node.js + NestJS (regras de negócio, fonte de verdade comercial/financeira)
-- **Worker:** processamento assíncrono (BullMQ/Redis) + execução segura do DragonFruit CLI
-- **Banco:** PostgreSQL + Prisma
-- **Storage:** MinIO/S3 (privado)
-- **Automação:** n8n (notificações/integrações, sem decidir estados financeiros)
-- **Pagamentos:** gateway via `PaymentProvider` adapter
+- **Backend:** Node.js + NestJS (business rules, source of truth for commercial/financial state)
+- **Worker:** asynchronous processing (BullMQ/Redis) + secure DragonFruit CLI execution
+- **Database:** PostgreSQL + Prisma
+- **Storage:** MinIO/S3 (private)
+- **Automation:** n8n (notifications/integrations, without deciding financial states)
+- **Payments:** gateway via `PaymentProvider` adapter
 
-## Estrutura
+## Structure
 ```
 apps/
   api/        # NestJS API
-  web/        # Next.js admin/cliente
-  worker/     # Jobs e integração slicer
+  web/        # Next.js admin/client
+  worker/     # Jobs and slicer integration
 packages/
-  contracts/  # Tipos/DTOs/contrato normalizado do slicer
-  pricing/    # Motor de precificação puro
-prisma/       # Schema e migrations
-docs/         # PoC, operações, ADRs
-docker/       # Dockerfiles e configs
+  contracts/  # Types/DTOs/normalized slicer contract
+  pricing/    # Pure pricing engine
+prisma/       # Schema and migrations
+docs/         # PoC, operations, ADRs
+docker/       # Dockerfiles and configs
 ```
 
-## Requisitos
+## Requirements
 - Docker + Docker Compose
-- Node.js (para dev local fora de container)
+- Node.js (for local development outside containers)
 
-## Subir ambiente (base)
+## Start environment (base)
 ```bash
 cp .env.example .env
 docker compose up -d --build
 ```
-> Serviços e apps serão adicionados progressivamente; consulte `docker-compose.yml` e `TASKS.md`.
+> Services and apps will be added progressively; see `docker-compose.yml` and `TASKS.md`.
 
 ## DragonFruit PoC
-- Documentação de capacidades/limitações: `docs/poc/dragonfruit-cli.md`
-- Validação de métricas (geométrico vs consumo): `docs/poc/metrics-validation.md`
-- Executor CLI com whitelist, timeout e sem shell arbitrário (`apps/worker` / adapter).
+- Capabilities/limitations: `docs/poc/dragonfruit-cli.md`
+- Metrics validation (geometric vs consumption): `docs/poc/metrics-validation.md`
+- CLI executor with whitelist, timeout, and no arbitrary shell execution (`apps/worker` / adapter).
 
-## Decisões importantes
-- Backend é fonte de verdade; n8n orquestra eventos.
-- Orçamentos/propostas emitidos são snapshots imutáveis.
-- Valores monetários em decimal (nunca float).
-- DragonFruit usado como ferramenta externa via CLI (avaliar AGPL antes de distribuição/modificação).
+## Key decisions
+- Backend is the source of truth; n8n orchestrates events.
+- Issued/approved quotes and proposals are immutable snapshots.
+- Monetary values use decimal (never float).
+- DragonFruit used as an external tool via CLI (evaluate AGPL before distribution/modification).
 
 ## Backlog
-Acompanhar `TASKS.md` e a especificação fornecida.
+Track `TASKS.md` and the provided specification.
