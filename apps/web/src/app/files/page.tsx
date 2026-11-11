@@ -13,13 +13,17 @@ function ModelViewer({ file }: { file: File3D }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dims, setDims] = useState<{ x: number; y: number; z: number } | null>(null);
+  const [wireframe, setWireframe] = useState(false);
+  const [showHelpers, setShowHelpers] = useState(true);
+  const apiRef = useRef<{ setWireframe: (v: boolean) => void; setHelpers: (v: boolean) => void; reset: () => void } | null>(null);
 
   useEffect(() => {
     let disposed = false;
     let cleanup: (() => void) | undefined;
     (async () => {
       try {
-        setErr(null); setLoading(true);
+        setErr(null); setLoading(true); setDims(null); apiRef.current = null;
         const THREE = await import("three");
         const { OrbitControls } = await import("three/examples/jsm/controls/OrbitControls.js");
         let object: any;
@@ -57,21 +61,43 @@ function ModelViewer({ file }: { file: File3D }) {
         el.appendChild(renderer.domElement);
         scene.add(new THREE.HemisphereLight(0xffffff, 0x222233, 1.0));
         const dir = new THREE.DirectionalLight(0xffffff, 1.0); dir.position.set(1, 2, 3); scene.add(dir);
+        const dir2 = new THREE.DirectionalLight(0xffffff, 0.4); dir2.position.set(-2, -1, -2); scene.add(dir2);
+
         const box = new THREE.Box3().setFromObject(object);
         const size = new THREE.Vector3(); const center = new THREE.Vector3();
         box.getSize(size); box.getCenter(center);
         object.position.sub(center);
         scene.add(object);
+        setDims({ x: size.x, y: size.y, z: size.z });
+
         const maxDim = Math.max(size.x, size.y, size.z) || 1;
-        camera.position.set(maxDim * 1.6, maxDim * 1.2, maxDim * 1.6);
+        const grid = new THREE.GridHelper(maxDim * 2.5, 20, 0x334155, 0x1f2937);
+        grid.position.y = -size.y / 2;
+        const axes = new THREE.AxesHelper(maxDim * 0.7);
+        scene.add(grid); scene.add(axes);
+        grid.visible = showHelpers; axes.visible = showHelpers;
+
+        const initialPos = new THREE.Vector3(maxDim * 1.6, maxDim * 1.2, maxDim * 1.6);
+        camera.position.copy(initialPos);
         camera.near = maxDim / 100; camera.far = maxDim * 100; camera.updateProjectionMatrix();
         const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
+        controls.enableDamping = true; controls.target.set(0, 0, 0); controls.update();
+
+        const applyWireframe = (v: boolean) => {
+          object.traverse((c: any) => { if (c.isMesh && c.material) { if (Array.isArray(c.material)) c.material.forEach((m: any) => m.wireframe = v); else c.material.wireframe = v; } });
+        };
+        applyWireframe(wireframe);
+        apiRef.current = {
+          setWireframe: applyWireframe,
+          setHelpers: (v: boolean) => { grid.visible = v; axes.visible = v; },
+          reset: () => { camera.position.copy(initialPos); controls.target.set(0, 0, 0); controls.update(); },
+        };
+
         let raf = 0;
         const animate = () => { if (disposed) return; raf = requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); };
         animate();
         setLoading(false);
-        cleanup = () => { cancelAnimationFrame(raf); controls.dispose(); renderer.dispose(); geometry?.dispose?.(); scene.clear(); if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement); };
+        cleanup = () => { cancelAnimationFrame(raf); apiRef.current = null; controls.dispose(); renderer.dispose(); geometry?.dispose?.(); scene.clear(); if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement); };
       } catch (e: any) {
         if (!disposed) { setErr(e?.message || "Failed to load preview"); setLoading(false); }
       }
@@ -79,10 +105,19 @@ function ModelViewer({ file }: { file: File3D }) {
     return () => { disposed = true; cleanup?.(); };
   }, [file.id, file.format]);
 
+  useEffect(() => { apiRef.current?.setWireframe(wireframe); }, [wireframe]);
+  useEffect(() => { apiRef.current?.setHelpers(showHelpers); }, [showHelpers]);
+
   return (
     <div>
       {loading && !err && <p style={{ opacity: 0.8 }}>Loading 3D preview...</p>}
       {err && <p style={{ color: "#f87171" }}>{err}</p>}
+      {!err && <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
+        <button onClick={() => apiRef.current?.reset()} disabled={loading}>Reset view</button>
+        <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: 13 }}><input type="checkbox" checked={wireframe} onChange={e => setWireframe(e.target.checked)} disabled={loading} /> Wireframe</label>
+        <label style={{ display: "flex", gap: 4, alignItems: "center", fontSize: 13 }}><input type="checkbox" checked={showHelpers} onChange={e => setShowHelpers(e.target.checked)} disabled={loading} /> Grid/Axes</label>
+        {dims && <span style={{ fontSize: 12, opacity: 0.8 }}>Bounds: {dims.x.toFixed(2)} × {dims.y.toFixed(2)} × {dims.z.toFixed(2)}</span>}
+      </div>}
       <div ref={containerRef} style={{ width: "100%", height: 360, borderRadius: 8, overflow: "hidden", border: "1px solid #222" }} />
     </div>
   );

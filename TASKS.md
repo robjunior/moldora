@@ -25,7 +25,7 @@
 ## Sprint 2 — 3D Files and Processing
 - [~] STL-01 Real upload/validation (multipart upload, format/size/hash, local storage, metadata registration via API), basic content/signature checks (STL/OBJ/3MF/VOX), and file content streaming endpoint (`GET /api/v1/files/:id/content`, inline/attachment download) backed by local storage — deeper/magic-byte validation and MinIO/S3/temporary URLs pending
 - [~] STL-04/05 (MVP runtime): DragonFruit adapter integration + job persistence + API→BullMQ enqueueing and worker queue consumer wired; web Files & Slicing UI (upload, create/list/poll jobs, normalized result, reprocess) and configurable CLI attempts/path/wrapper support added. End-to-end validated in mock mode (upload → job → worker `SUCCEEDED` → reprocess). Real headless DragonFruit CLI validation on server pending.
-- [~] STL-07 Basic web 3D viewer/preview for STL/OBJ/3MF files on Files & Slicing page (Three.js loaders + orbit controls) with download/open fallback; VOX preview and richer viewer controls pending
+- [~] STL-07 Basic web 3D viewer/preview for STL/OBJ/3MF files on Files & Slicing page (Three.js loaders + orbit controls, reset/wireframe/grid-axes toggles, bounds display) with download/open fallback; VOX preview pending
 
 ## Sprint 3 — Materials/Pricing
 - [x] MAT-01/03/04 Base: materials/printers/profiles CRUD via API (initial seed); web Settings & Catalog UI added (create/list materials, update price/active state, create printers/profiles, edit pricing defaults).
@@ -52,7 +52,7 @@
 - Sprint 2 runtime (mock mode): upload file → create slicing job → BullMQ worker processes → `SUCCEEDED` with normalized result persisted; reprocess flow and Files & Slicing web UI validated.
 - Quote/item runtime (mock mode): succeeded slicing job + material/settings prefill → add/edit/remove quote items with `pricingInput`/breakdown and recalculation, then send snapshot; web quote detail/item form implemented and typechecked.
 - Settings/catalog runtime (temp DB): pricing defaults read/update, material create/list, printer/profile create/list validated via API; web Settings & Catalog UI added.
-- Files content/preview (temp DB, built API): `GET /api/v1/files/:id/content` streamed stored file with correct inline/attachment headers (`200`) and returned `404` for missing records; upload rejected invalid 3MF content and accepted valid STL in smoke test; web Files page gained download/open actions and STL/OBJ/3MF Three.js preview component (3MF via `ThreeMFLoader`, Z-up correction); API/web/worker typechecks passed.
+- Files content/preview (temp DB, built API): `GET /api/v1/files/:id/content` streamed stored file with correct inline/attachment headers (`200`) and returned `404` for missing records; upload rejected invalid 3MF content and accepted valid STL in smoke test; web Files page gained download/open actions and STL/OBJ/3MF Three.js preview component (3MF via `ThreeMFLoader`, Z-up correction) with reset view, wireframe/grid-axes toggles and bounds display; API/web/worker typechecks passed.
 - Quote proposal/PDF (temp DB, built API): `GET /api/v1/quotes/:id/proposal.pdf` returned `200 application/pdf` (valid `%PDF-1.3`, inline disposition) for existing quote while HTML proposal remained `200`; web quotes list includes PDF link; API/web/worker typechecks passed.
 
 ## Blockers/environment
