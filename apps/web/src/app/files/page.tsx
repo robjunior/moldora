@@ -33,7 +33,12 @@ function ModelViewer({ file }: { file: File3D }) {
         } else if (file.format === "OBJ") {
           const { OBJLoader } = await import("three/examples/jsm/loaders/OBJLoader.js");
           object = await new Promise<any>((resolve, reject) => new OBJLoader().load(url, resolve, undefined, reject));
-          object.traverse((c: any) => { if (c.isMesh) c.material = new THREE.MeshStandardMaterial({ color: "#9ca3af", metalness: 0.1, roughness: 0.8 }); });
+          object.traverse((c: any) => { if (c.isMesh && !c.material) c.material = new THREE.MeshStandardMaterial({ color: "#9ca3af", metalness: 0.1, roughness: 0.8 }); });
+        } else if (file.format === "3MF") {
+          const mod: any = await import("three/examples/jsm/loaders/3MFLoader.js");
+          const Loader = mod.ThreeMFLoader || mod.default;
+          object = await new Promise<any>((resolve, reject) => new Loader().load(url, resolve, undefined, reject));
+          object.rotation.set(-Math.PI / 2, 0, 0); // 3MF is typically Z-up
         } else {
           setErr(`Preview not available for ${file.format}. Use download.`);
           setLoading(false);
@@ -122,7 +127,7 @@ export default function FilesPage() {
   }, [jobs, selectedFileId]);
 
   const selectedFile = useMemo(() => files.find(f => f.id === selectedFileId), [files, selectedFileId]);
-  const selectedPreviewable = selectedFile && (selectedFile.format === "STL" || selectedFile.format === "OBJ");
+  const selectedPreviewable = selectedFile && (selectedFile.format === "STL" || selectedFile.format === "OBJ" || selectedFile.format === "3MF");
 
   async function onUpload(e: React.FormEvent) {
     e.preventDefault();
@@ -227,7 +232,7 @@ export default function FilesPage() {
               {selectedPreviewable ? (
                 <ModelViewer file={selectedFile} />
               ) : (
-                <p style={{ opacity: 0.8, margin: 0 }}>3D preview is currently available for STL/OBJ files. Use Download for {selectedFile.format}.</p>
+                <p style={{ opacity: 0.8, margin: 0 }}>3D preview is currently available for STL/OBJ/3MF files. Use Download for {selectedFile.format}.</p>
               )}
             </div>
           )}
