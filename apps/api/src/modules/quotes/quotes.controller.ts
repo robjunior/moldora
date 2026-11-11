@@ -32,4 +32,6 @@ export class QuotesController {
   @Post(':id/send') send(@Param('id') id: string) { return this.service.send(id); }
   @Post(':id/approve') approve(@Param('id') id: string) { return this.service.approve(id); }
   @Post(':id/reject') reject(@Param('id') id: string) { return this.service.reject(id); }
+  @Post(':id/expire') expire(@Param('id') id: string) { return this.service.expire(id); }
+  @Post(':id/reopen') reopen(@Param('id') id: string) { return this.service.reopen(id); }
 }

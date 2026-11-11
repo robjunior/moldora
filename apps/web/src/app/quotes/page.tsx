@@ -60,6 +60,11 @@ export default function QuotesPage() {
 
   const fileJobs = useMemo(() => jobs.filter(j => j.fileId === item.fileId), [jobs, item.fileId]);
   const canEdit = detail && ["DRAFT", "REVIEW", "PROCESSING"].includes(detail.status);
+  const canSend = detail && ["DRAFT", "REVIEW", "PROCESSING"].includes(detail.status) && (detail.items?.length || 0) > 0;
+  const canApproveReject = detail?.status === "SENT";
+  const canExpire = detail && ["SENT", "REJECTED"].includes(detail.status);
+  const canReopen = detail && ["SENT", "REJECTED", "EXPIRED"].includes(detail.status);
+  const canCreateOrder = detail?.status === "APPROVED";
 
   function prefillFromContext(fileId: string, slicingJobId: string, materialId: string) {
     const file = files.find(f => f.id === fileId);
@@ -205,15 +210,10 @@ export default function QuotesPage() {
         <div style={{ display: "grid", gap: 12 }}>
           {quotes.map(q => (
             <div key={q.id} onClick={() => setSelectedId(q.id)} style={{ border: selectedId===q.id?"1px solid #60a5fa":"1px solid #333", borderRadius: 8, padding: 12, cursor: "pointer" }}>
-              <div><b>{q.id}</b> — {q.status}</div>
+              <div><b>{q.id}</b> — {q.status} (v{q.version || 1})</div>
               <div>{q.customer?.name || q.customerId}</div>
               <div>Total: {q.total ?? "-"} {q.currency} · Items: {q.items?.length || 0}</div>
               <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                <button onClick={(e)=>{e.stopPropagation(); action(q.id, "recalc");}}>Recalc</button>
-                <button onClick={(e)=>{e.stopPropagation(); action(q.id, "send");}}>Send</button>
-                <button onClick={(e)=>{e.stopPropagation(); action(q.id, "approve");}}>Approve</button>
-                <button onClick={(e)=>{e.stopPropagation(); action(q.id, "reject");}}>Reject</button>
-                <button onClick={(e)=>{e.stopPropagation(); createOrder(q.id);}}>Create Order</button>
                 <a href={`${API_BASE}/quotes/${q.id}/proposal`} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}>Proposal</a>
                 <a href={`${API_BASE}/quotes/${q.id}/proposal.pdf`} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}>PDF</a>
               </div>
@@ -226,8 +226,19 @@ export default function QuotesPage() {
           {!detail ? <p>Select a quote to view details and add items.</p> : (
             <>
               <h2 style={{ marginTop: 0 }}>Quote detail</h2>
-              <div><b>{detail.id}</b> — {detail.status} — {detail.customer?.name}</div>
+              <div><b>{detail.id}</b> — {detail.status} — v{detail.version || 1} — {detail.customer?.name}</div>
               <div>Subtotal: {detail.subtotal ?? 0} · Total: {detail.total ?? 0} {detail.currency}</div>
+              <div style={{ fontSize: 12, opacity: 0.85, marginTop: 4 }}>Sent: {detail.sentAt ? new Date(detail.sentAt).toLocaleString() : "-"} · Approved: {detail.approvedAt ? new Date(detail.approvedAt).toLocaleString() : "-"} · Rejected: {detail.rejectedAt ? new Date(detail.rejectedAt).toLocaleString() : "-"}</div>
+              <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                <button onClick={() => action(detail.id, "recalc")} disabled={!!busy}>Recalc</button>
+                <button onClick={() => action(detail.id, "send")} disabled={!canSend || !!busy}>Send</button>
+                <button onClick={() => action(detail.id, "approve")} disabled={!canApproveReject || !!busy}>Approve</button>
+                <button onClick={() => action(detail.id, "reject")} disabled={!canApproveReject || !!busy}>Reject</button>
+                <button onClick={() => action(detail.id, "expire")} disabled={!canExpire || !!busy}>Expire</button>
+                <button onClick={() => action(detail.id, "reopen")} disabled={!canReopen || !!busy}>Reopen (new draft)</button>
+                <button onClick={() => createOrder(detail.id)} disabled={!canCreateOrder || !!busy}>Create Order</button>
+              </div>
+              {detail.snapshotJson && <details style={{ marginTop: 8 }}><summary>Snapshot / history metadata</summary><pre style={{ whiteSpace: "pre-wrap", fontSize: 12 }}>{JSON.stringify(detail.snapshotJson, null, 2)}</pre></details>}
               <h3>Items ({detail.items?.length || 0})</h3>
               <div style={{ display: "grid", gap: 8 }}>
                 {(detail.items || []).map((it: any) => (

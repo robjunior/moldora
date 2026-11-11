@@ -109,15 +109,28 @@ export class QuotesService {
     return this.get(id);
   }
 
-  async send(id: string) {
-    const quote = await this.recalcTotals(id);
-    if (!quote.items.length) throw new BadRequestException('Quote must have items');
-    if (!['DRAFT', 'REVIEW', 'PROCESSING'].includes(quote.status)) throw new BadRequestException('Invalid status for send');
-    const snapshot = {
-      quoteId: id,
+  private assertTransition(from: string, to: string) {
+    const allowed: Record<string, string[]> = {
+      DRAFT: ['PROCESSING', 'REVIEW', 'SENT'],
+      PROCESSING: ['REVIEW', 'SENT', 'DRAFT'],
+      REVIEW: ['SENT', 'DRAFT'],
+      SENT: ['APPROVED', 'REJECTED', 'EXPIRED', 'DRAFT'],
+      REJECTED: ['DRAFT', 'EXPIRED'],
+      EXPIRED: ['DRAFT'],
+      APPROVED: ['CONVERTED'],
+      CONVERTED: [],
+    };
+    const ok = (allowed[from] || []).includes(to);
+    if (!ok) throw new BadRequestException(`Invalid quote status transition: ${from} -> ${to}`);
+  }
+
+  private buildSnapshot(quote: any, reason: string) {
+    return {
+      quoteId: quote.id,
       version: quote.version,
       frozenAt: new Date().toISOString(),
-      statusAtSend: quote.status,
+      reason,
+      statusAtSnapshot: quote.status,
       currency: quote.currency,
       customer: quote.customer,
       items: quote.items,
@@ -126,20 +139,50 @@ export class QuotesService {
       notes: quote.notes,
       validityUntil: quote.validityUntil,
     };
+  }
+
+  async send(id: string) {
+    const quote = await this.recalcTotals(id);
+    if (!quote.items.length) throw new BadRequestException('Quote must have items');
+    this.assertTransition(quote.status, 'SENT');
+    const snapshot = this.buildSnapshot({ ...quote, status: 'SENT' }, 'sent');
     return this.prisma.quote.update({ where: { id }, data: { status: 'SENT', sentAt: new Date(), snapshotJson: snapshot as any } });
   }
 
   async approve(id: string) {
     const quote = await this.get(id);
-    if (quote.status !== 'SENT') throw new BadRequestException('Quote must be SENT to approve');
-    const snapshot = quote.snapshotJson || { quoteId: id, frozenAt: new Date().toISOString(), note: 'approved without prior snapshot', items: quote.items, total: quote.total };
+    this.assertTransition(quote.status, 'APPROVED');
+    const snapshot = quote.snapshotJson || this.buildSnapshot({ ...quote, status: 'APPROVED' }, 'approved');
     return this.prisma.quote.update({ where: { id }, data: { status: 'APPROVED', approvedAt: new Date(), snapshotJson: snapshot as any } });
   }
 
   async reject(id: string) {
     const quote = await this.get(id);
-    if (!['SENT'].includes(quote.status)) throw new BadRequestException('Quote must be SENT to reject');
+    this.assertTransition(quote.status, 'REJECTED');
     return this.prisma.quote.update({ where: { id }, data: { status: 'REJECTED', rejectedAt: new Date() } });
+  }
+
+  async expire(id: string) {
+    const quote = await this.get(id);
+    this.assertTransition(quote.status, 'EXPIRED');
+    return this.prisma.quote.update({ where: { id }, data: { status: 'EXPIRED' } });
+  }
+
+  async reopen(id: string) {
+    const quote = await this.get(id);
+    this.assertTransition(quote.status, 'DRAFT');
+    const prev = quote.snapshotJson ? { previousSnapshot: quote.snapshotJson, reopenedFrom: quote.status, reopenedAt: new Date().toISOString() } : { reopenedFrom: quote.status, reopenedAt: new Date().toISOString() };
+    return this.prisma.quote.update({
+      where: { id },
+      data: {
+        status: 'DRAFT',
+        version: (quote.version || 1) + 1,
+        sentAt: null,
+        approvedAt: null,
+        rejectedAt: null,
+        snapshotJson: prev as any,
+      },
+    });
   }
 
   async proposalData(id: string) {
