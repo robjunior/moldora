@@ -142,20 +142,77 @@ export class QuotesService {
     return this.prisma.quote.update({ where: { id }, data: { status: 'REJECTED', rejectedAt: new Date() } });
   }
 
-  async proposalHtml(id: string) {
+  async proposalData(id: string) {
     const q = await this.get(id);
     const snap: any = q.snapshotJson || q;
-    const items = (snap.items || q.items || []).map((it: any) => `<tr><td>${it.description || it.file?.originalName || 'Item'}</td><td>${it.quantity}</td><td>BRL ${Number(it.unitPrice||0).toFixed(2)}</td><td>BRL ${Number(it.totalPrice||0).toFixed(2)}</td></tr>`).join('');
+    const items = snap.items || q.items || [];
+    return { q, snap, items };
+  }
+
+  async proposalHtml(id: string) {
+    const { q, snap, items } = await this.proposalData(id);
+    const rows = items.map((it: any) => `<tr><td>${it.description || it.file?.originalName || 'Item'}</td><td>${it.quantity}</td><td>BRL ${Number(it.unitPrice||0).toFixed(2)}</td><td>BRL ${Number(it.totalPrice||0).toFixed(2)}</td></tr>`).join('');
     return `<!doctype html><html><head><meta charset="utf-8"><title>Proposal ${q.id}</title>
 <style>body{font-family:Arial,sans-serif;margin:32px;color:#111}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f5f5f5}.total{font-size:20px;margin-top:16px}</style></head>
 <body><h1>Commercial Proposal - 3D Printing</h1>
 <p><b>Quote:</b> ${q.id} &nbsp; <b>Status:</b> ${q.status} &nbsp; <b>Version:</b> ${q.version}</p>
 <p><b>Customer:</b> ${q.customer?.name || ''} ${q.customer?.email ? '('+q.customer.email+')':''}</p>
 <p><b>Valid until:</b> ${q.validityUntil ? new Date(q.validityUntil).toLocaleDateString('en-US') : 'Not defined'}</p>
-<table><thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead><tbody>${items}</tbody></table>
+<table><thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>
 <p class="total"><b>Total:</b> BRL ${Number(snap.total ?? q.total ?? 0).toFixed(2)}</p>
 <p><b>Notes:</b> ${q.notes || '-'}</p>
 <hr><small>Generated at ${new Date().toLocaleString('en-US')}. Values are frozen in the snapshot when issued/approved.</small>
 </body></html>`;
+  }
+
+  async proposalPdf(id: string): Promise<Buffer> {
+    const { q, snap, items } = await this.proposalData(id);
+    const PDFDocument = require('pdfkit');
+    return await new Promise<Buffer>((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ size: 'A4', margin: 40 });
+        const chunks: Buffer[] = [];
+        doc.on('data', (c: Buffer) => chunks.push(c));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+
+        doc.fontSize(20).text('Commercial Proposal - 3D Printing', { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(10).text(`Quote: ${q.id}   Status: ${q.status}   Version: ${q.version}`);
+        doc.text(`Customer: ${q.customer?.name || ''}${q.customer?.email ? ' (' + q.customer.email + ')' : ''}`);
+        doc.text(`Valid until: ${q.validityUntil ? new Date(q.validityUntil).toLocaleDateString('en-US') : 'Not defined'}`);
+        doc.moveDown();
+
+        const startX = doc.x;
+        const col = [260, 50, 80, 80];
+        const headers = ['Description', 'Qty', 'Unit', 'Total'];
+        let y = doc.y;
+        doc.font('Helvetica-Bold').fontSize(10);
+        headers.forEach((h, i) => doc.text(h, startX + col.slice(0, i).reduce((a,b)=>a+b,0), y, { width: col[i] }));
+        y += 18;
+        doc.moveTo(startX, y - 4).lineTo(startX + col.reduce((a,b)=>a+b,0), y - 4).stroke();
+        doc.font('Helvetica').fontSize(10);
+        for (const it of items) {
+          const row = [
+            String(it.description || it.file?.originalName || 'Item').slice(0, 60),
+            String(it.quantity ?? ''),
+            `BRL ${Number(it.unitPrice || 0).toFixed(2)}`,
+            `BRL ${Number(it.totalPrice || 0).toFixed(2)}`,
+          ];
+          const h = Math.max(doc.heightOfString(row[0], { width: col[0] }), 14);
+          if (y + h > doc.page.height - doc.page.margins.bottom - 60) { doc.addPage(); y = doc.y; }
+          row.forEach((cell, i) => doc.text(cell, startX + col.slice(0, i).reduce((a,b)=>a+b,0), y, { width: col[i] }));
+          y += h + 6;
+        }
+        doc.moveTo(startX, y).lineTo(startX + col.reduce((a,b)=>a+b,0), y).stroke();
+        y += 10;
+        doc.font('Helvetica-Bold').fontSize(14).text(`Total: BRL ${Number(snap.total ?? q.total ?? 0).toFixed(2)}`, startX, y);
+        doc.moveDown();
+        doc.font('Helvetica').fontSize(10).text(`Notes: ${q.notes || '-'}`);
+        doc.moveDown();
+        doc.fontSize(8).fillColor('#555555').text(`Generated at ${new Date().toLocaleString('en-US')}. Values are frozen in the snapshot when issued/approved.`);
+        doc.end();
+      } catch (e) { reject(e); }
+    });
   }
 }

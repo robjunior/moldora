@@ -215,6 +215,7 @@ export default function QuotesPage() {
                 <button onClick={(e)=>{e.stopPropagation(); action(q.id, "reject");}}>Reject</button>
                 <button onClick={(e)=>{e.stopPropagation(); createOrder(q.id);}}>Create Order</button>
                 <a href={`${API_BASE}/quotes/${q.id}/proposal`} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}>Proposal</a>
+                <a href={`${API_BASE}/quotes/${q.id}/proposal.pdf`} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}>PDF</a>
               </div>
             </div>
           ))}

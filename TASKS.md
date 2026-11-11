@@ -34,7 +34,7 @@
 
 ## Sprint 4 — Quotes/Commercial/Financial
 - [~] QUO-01/02/07/08 (partial): quote creation, item addition/editing/removal with pricing breakdown and recalculation (API + web detail UI), send with basic immutable snapshot, approve/reject, conversion to order; full state machine/versions/history pending
-- [~] QUO-04 proposal HTML available; PDF generation pending
+- [~] QUO-04 proposal HTML and PDF generation available (`GET /api/v1/quotes/:id/proposal` and `/proposal.pdf` via pdfkit) with web proposal/PDF links; richer branding/layout/attachments pending
 - [~] PAY-01/02/03/04 (partial): `PaymentProvider` interface + mock provider, charge creation, idempotent webhook, payment/order update, amount-mismatch blocking, mismatch audit — real gateway/card/refund pending
 
 ## Sprint 5 — Orders/Production/Automation
@@ -53,6 +53,7 @@
 - Quote/item runtime (mock mode): succeeded slicing job + material/settings prefill → add/edit/remove quote items with `pricingInput`/breakdown and recalculation, then send snapshot; web quote detail/item form implemented and typechecked.
 - Settings/catalog runtime (temp DB): pricing defaults read/update, material create/list, printer/profile create/list validated via API; web Settings & Catalog UI added.
 - Files content/preview (temp DB, built API): `GET /api/v1/files/:id/content` streamed stored file with correct inline/attachment headers (`200`) and returned `404` for missing records; upload rejected invalid 3MF content and accepted valid STL in smoke test; web Files page gained download/open actions and STL/OBJ/3MF Three.js preview component (3MF via `ThreeMFLoader`, Z-up correction); API/web/worker typechecks passed.
+- Quote proposal/PDF (temp DB, built API): `GET /api/v1/quotes/:id/proposal.pdf` returned `200 application/pdf` (valid `%PDF-1.3`, inline disposition) for existing quote while HTML proposal remained `200`; web quotes list includes PDF link; API/web/worker typechecks passed.
 
 ## Blockers/environment
 - **DragonFruit CLI missing** in this environment — slicing is validated in `mock` mode only; real PoC requires a container/image with the CLI + authorized profiles/plugins.

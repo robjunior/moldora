@@ -14,6 +14,17 @@ export class QuotesController {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   }
+
+  @Get(':id/proposal.pdf')
+  async proposalPdf(@Param('id') id: string, @Res() res: Response) {
+    const pdf = await this.service.proposalPdf(id);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="proposal-${id}.pdf"`,
+      'Content-Length': String(pdf.length),
+    });
+    res.end(pdf);
+  }
   @Post(':id/items') addItem(@Param('id') id: string, @Body() body: any) { return this.service.addItem(id, body); }
   @Post(':id/items/:itemId') updateItem(@Param('id') id: string, @Param('itemId') itemId: string, @Body() body: any) { return this.service.updateItem(id, itemId, body); }
   @Post(':id/items/:itemId/remove') removeItem(@Param('id') id: string, @Param('itemId') itemId: string) { return this.service.removeItem(id, itemId); }
