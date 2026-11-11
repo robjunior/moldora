@@ -6,9 +6,10 @@ export default function Home() {
       <ul>
         <li><a href="/dashboard">Dashboard</a></li>
         <li><a href="/customers">Customers</a></li>
-        <li><a href="/files">Files & Slicing</a></li>
+        <li><a href="/files">Files &amp; Slicing</a></li>
         <li><a href="/quotes">Quotes</a></li>
         <li><a href="/orders">Orders</a></li>
+        <li><a href="/settings">Settings &amp; Catalog</a></li>
       </ul>
       <p style={{opacity:0.7}}>Expected API at <code>{process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}</code></p>
     </main>

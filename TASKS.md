@@ -28,8 +28,8 @@
 - [ ] STL-07 3D viewer pending
 
 ## Sprint 3 — Materials/Pricing
-- [x] MAT-01/03/04 Base: materials/printers/profiles CRUD via API (initial seed)
-- [~] PRICE-01/04/05 (MVP): quote item pricing via API (`POST /quotes/:id/items` with `pricingInput`) calculates breakdown (volume/losses/costs/margin), stores `breakdownJson` + inputs and recalculates totals; logic aligned with `@print3d/pricing` (currently implemented inline in API service). Web quotes UI can add items linked to file/material/slicing job with prefilled metrics/defaults and shows breakdown. Dedicated unit tests/shared-runtime integration pending.
+- [x] MAT-01/03/04 Base: materials/printers/profiles CRUD via API (initial seed); web Settings & Catalog UI added (create/list materials, update price/active state, create printers/profiles, edit pricing defaults).
+- [~] PRICE-01/04/05 (MVP): quote item pricing via API (`POST /quotes/:id/items` with `pricingInput`) calculates breakdown (volume/losses/costs/margin), stores `breakdownJson` + inputs and recalculates totals; logic aligned with `@print3d/pricing` (currently implemented inline in API service). Web quotes UI can add/remove items linked to file/material/slicing job with prefilled metrics/defaults and shows breakdown. Dedicated unit tests/shared-runtime integration pending.
 - [~] MAT-02/PRICE-02/03/06/07 config history/versioning and advanced cases (plate vs model, dedicated unit tests) pending
 
 ## Sprint 4 — Quotes/Commercial/Financial
@@ -51,6 +51,7 @@
 - API smoke (NestJS, bun): health, dashboard, settings, printers, customers, flow `quote -> item/pricing -> recalc -> send(snapshot) -> approve -> order -> payment -> webhook(CONFIRMED)` with order updated to `PAID` and `production_logs`.
 - Sprint 2 runtime (mock mode): upload file → create slicing job → BullMQ worker processes → `SUCCEEDED` with normalized result persisted; reprocess flow and Files & Slicing web UI validated.
 - Quote/item runtime (mock mode): succeeded slicing job + material/settings prefill → add quote item with `pricingInput`/breakdown → recalc/send snapshot and remove item with recalculation; web quote detail/item form implemented and typechecked.
+- Settings/catalog runtime (temp DB): pricing defaults read/update, material create/list, printer/profile create/list validated via API; web Settings & Catalog UI added.
 
 ## Blockers/environment
 - **DragonFruit CLI missing** in this environment — slicing is validated in `mock` mode only; real PoC requires a container/image with the CLI + authorized profiles/plugins.
