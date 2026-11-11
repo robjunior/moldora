@@ -12,12 +12,13 @@ function calculatePricing(input: any, currency = 'BRL') {
   const laborCost = Number(input.laborCost || 0);
   const lossRate = Number(input.lossRate || 0);
   const marginRate = Math.min(Math.max(Number(input.marginRate || 0), 0), 0.99);
-  const materialCost = ((volumeMl * (1 + lossRate)) / 1000) * pricePerLiter;
+  const effectiveVolumeMl = volumeMl * (1 + lossRate);
+  const materialCost = (effectiveVolumeMl / 1000) * pricePerLiter;
   const machineCost = printTimeHours * machineCostPerHour;
   const lossCost = ((volumeMl * lossRate) / 1000) * pricePerLiter;
   const totalCost = materialCost + energyCost + machineCost + operationCost + laborCost;
   const salePrice = marginRate >= 1 ? totalCost : totalCost / (1 - marginRate);
-  return { materialCost: round4(materialCost), energyCost: round4(energyCost), machineCost: round4(machineCost), operationCost: round4(operationCost), laborCost: round4(laborCost), lossCost: round4(lossCost), totalCost: round4(totalCost), marginRate: round4(marginRate), salePrice: round4(salePrice), currency };
+  return { materialCost: round4(materialCost), energyCost: round4(energyCost), machineCost: round4(machineCost), operationCost: round4(operationCost), laborCost: round4(laborCost), lossCost: round4(lossCost), totalCost: round4(totalCost), marginRate: round4(marginRate), salePrice: round4(salePrice), currency, inputs: { volumeMl, pricePerLiter, printTimeHours, machineCostPerHour, energyCost, operationCost, laborCost, lossRate } };
 }
 
 @Injectable()
@@ -26,8 +27,9 @@ export class QuotesService {
 
   list() { return this.prisma.quote.findMany({ include: { customer: true, items: true }, orderBy: { createdAt: 'desc' } }); }
 
-  async create(data: { customerId: string; notes?: string }) {
-    return this.prisma.quote.create({ data: { customerId: data.customerId, notes: data.notes, status: 'DRAFT' } });
+  async create(data: { customerId: string; notes?: string; validityDays?: number }) {
+    const validityUntil = data.validityDays ? new Date(Date.now() + Number(data.validityDays) * 86400000) : null;
+    return this.prisma.quote.create({ data: { customerId: data.customerId, notes: data.notes, status: 'DRAFT', validityUntil } });
   }
 
   async get(id: string) {
@@ -73,6 +75,7 @@ export class QuotesService {
     if (!['DRAFT', 'REVIEW', 'PROCESSING'].includes(quote.status)) throw new BadRequestException('Invalid status for send');
     const snapshot = {
       quoteId: id,
+      version: quote.version,
       frozenAt: new Date().toISOString(),
       statusAtSend: quote.status,
       currency: quote.currency,
@@ -89,7 +92,7 @@ export class QuotesService {
   async approve(id: string) {
     const quote = await this.get(id);
     if (quote.status !== 'SENT') throw new BadRequestException('Quote must be SENT to approve');
-    const snapshot = quote.snapshotJson || { quoteId: id, frozenAt: new Date().toISOString(), note: 'approved without prior snapshot' };
+    const snapshot = quote.snapshotJson || { quoteId: id, frozenAt: new Date().toISOString(), note: 'approved without prior snapshot', items: quote.items, total: quote.total };
     return this.prisma.quote.update({ where: { id }, data: { status: 'APPROVED', approvedAt: new Date(), snapshotJson: snapshot as any } });
   }
 
@@ -97,5 +100,22 @@ export class QuotesService {
     const quote = await this.get(id);
     if (!['SENT'].includes(quote.status)) throw new BadRequestException('Quote must be SENT to reject');
     return this.prisma.quote.update({ where: { id }, data: { status: 'REJECTED', rejectedAt: new Date() } });
+  }
+
+  async proposalHtml(id: string) {
+    const q = await this.get(id);
+    const snap: any = q.snapshotJson || q;
+    const items = (snap.items || q.items || []).map((it: any) => `<tr><td>${it.description || it.file?.originalName || 'Item'}</td><td>${it.quantity}</td><td>R$ ${Number(it.unitPrice||0).toFixed(2)}</td><td>R$ ${Number(it.totalPrice||0).toFixed(2)}</td></tr>`).join('');
+    return `<!doctype html><html><head><meta charset="utf-8"><title>Proposta ${q.id}</title>
+<style>body{font-family:Arial,sans-serif;margin:32px;color:#111}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f5f5f5}.total{font-size:20px;margin-top:16px}</style></head>
+<body><h1>Proposta Comercial - Impressão 3D</h1>
+<p><b>Orçamento:</b> ${q.id} &nbsp; <b>Status:</b> ${q.status} &nbsp; <b>Versão:</b> ${q.version}</p>
+<p><b>Cliente:</b> ${q.customer?.name || ''} ${q.customer?.email ? '('+q.customer.email+')':''}</p>
+<p><b>Validade:</b> ${q.validityUntil ? new Date(q.validityUntil).toLocaleDateString('pt-BR') : 'Não definida'}</p>
+<table><thead><tr><th>Descrição</th><th>Qtd</th><th>Unit.</th><th>Total</th></tr></thead><tbody>${items}</tbody></table>
+<p class="total"><b>Total:</b> R$ ${Number(snap.total ?? q.total ?? 0).toFixed(2)}</p>
+<p><b>Observações:</b> ${q.notes || '-'}</p>
+<hr><small>Gerado em ${new Date().toLocaleString('pt-BR')}. Valores congelados no snapshot quando emitido/aprovado.</small>
+</body></html>`;
   }
 }

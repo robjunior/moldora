@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { QuotesService } from './quotes.service';
 
 @Controller('quotes')
@@ -7,6 +8,12 @@ export class QuotesController {
   @Get() list() { return this.service.list(); }
   @Post() create(@Body() body: any) { return this.service.create(body); }
   @Get(':id') get(@Param('id') id: string) { return this.service.get(id); }
+  @Get(':id/proposal')
+  async proposal(@Param('id') id: string, @Res() res: Response) {
+    const html = await this.service.proposalHtml(id);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  }
   @Post(':id/items') addItem(@Param('id') id: string, @Body() body: any) { return this.service.addItem(id, body); }
   @Post(':id/recalc') recalc(@Param('id') id: string) { return this.service.recalcTotals(id); }
   @Post(':id/send') send(@Param('id') id: string) { return this.service.send(id); }
