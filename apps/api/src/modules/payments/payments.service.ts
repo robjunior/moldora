@@ -82,4 +82,23 @@ export class PaymentsService {
     };
     return this.handleWebhook(payment.provider, payload);
   }
+
+  async refund(id: string) {
+    const payment = await this.get(id);
+    if (payment.provider !== 'mock') throw new BadRequestException('Refund is only supported for mock payments');
+    const refund = await this.provider.refund(id);
+    const updated = await this.prisma.payment.update({
+      where: { id: payment.id },
+      data: { status: (refund.status === 'REFUNDED' ? 'REFUNDED' : payment.status) as any },
+    });
+    await this.prisma.auditLog.create({
+      data: {
+        action: 'PAYMENT_REFUNDED',
+        entityType: 'Payment',
+        entityId: payment.id,
+        metadata: { refundId: refund.id, amount: Number(payment.amount) } as any,
+      },
+    });
+    return this.get(updated.id);
+  }
 }

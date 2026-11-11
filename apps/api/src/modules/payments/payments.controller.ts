@@ -8,6 +8,7 @@ export class PaymentsController {
   @Post('payments') create(@Body() body: any) { return this.service.create(body); }
   @Get('payments/:id') get(@Param('id') id: string) { return this.service.get(id); }
   @Post('payments/:id/simulate-confirm') simulateConfirm(@Param('id') id: string) { return this.service.simulateConfirm(id); }
+  @Post('payments/:id/refund') refund(@Param('id') id: string) { return this.service.refund(id); }
   @Post('webhooks/payments/:provider') webhook(@Param('provider') provider: string, @Body() body: any) {
     return this.service.handleWebhook(provider, body);
   }
