@@ -49,6 +49,8 @@ export default function OrdersPage() {
   useEffect(() => { loadDetail(selectedId); }, [selectedId]);
 
   const selected = useMemo(() => orders.find(o => o.id === selectedId) || detail, [orders, selectedId, detail]);
+  const pendingPayment = useMemo(() => (detail?.payments || []).find((p: any) => p.status === "PENDING"), [detail]);
+  const canCreatePayment = !!selected && !["CANCELLED", "COMPLETED"].includes(selected.status) && !(detail?.payments || []).some((p: any) => p.status === "CONFIRMED");
 
   async function setStatus(id: string, status: string) {
     setBusy(`${id}:${status}`); setError(null); setNotice(null);
@@ -60,6 +62,34 @@ export default function OrdersPage() {
       await loadDetail(id);
     } catch (e: any) {
       setError(e.message || "Failed to update status");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function createPayment(id: string) {
+    setBusy(`pay:${id}`); setError(null); setNotice(null);
+    try {
+      await api(`/payments`, { method: "POST", body: JSON.stringify({ orderId: id }) });
+      setNotice(`Mock payment created for order ${id.slice(0,8)}`);
+      await load();
+      await loadDetail(id);
+    } catch (e: any) {
+      setError(e.message || "Failed to create payment");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function simulateConfirm(paymentId: string) {
+    setBusy(`confirm:${paymentId}`); setError(null); setNotice(null);
+    try {
+      await api(`/payments/${paymentId}/simulate-confirm`, { method: "POST", body: JSON.stringify({}) });
+      setNotice("Mock payment confirmed");
+      await load();
+      if (selectedId) await loadDetail(selectedId);
+    } catch (e: any) {
+      setError(e.message || "Failed to confirm payment");
     } finally {
       setBusy(null);
     }
@@ -132,13 +162,40 @@ export default function OrdersPage() {
               </div>
 
               <h3 style={{ marginTop: 16 }}>Payments ({detail?.payments?.length || 0})</h3>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                <button
+                  onClick={() => createPayment(selected.id)}
+                  disabled={!canCreatePayment || busy===`pay:${selected.id}`}
+                >
+                  {busy===`pay:${selected.id}` ? "Creating..." : "Create mock payment"}
+                </button>
+                {pendingPayment && (
+                  <button onClick={() => simulateConfirm(pendingPayment.id)} disabled={busy===`confirm:${pendingPayment.id}`}>
+                    {busy===`confirm:${pendingPayment.id}` ? "Confirming..." : "Simulate confirmation"}
+                  </button>
+                )}
+              </div>
               <div style={{ display: "grid", gap: 8 }}>
-                {(detail?.payments || []).map((p: any) => (
-                  <div key={p.id} style={{ border: "1px solid #222", borderRadius: 6, padding: 8, fontSize: 13 }}>
-                    <div><b>{p.status}</b> · {p.provider} · {p.amount} {p.currency}</div>
-                    <div style={{ opacity: 0.8, fontSize: 12 }}>ID: {p.id}{p.providerPaymentId ? ` · Provider: ${p.providerPaymentId}` : ""}</div>
-                  </div>
-                ))}
+                {(detail?.payments || []).map((p: any) => {
+                  const rr: any = p.rawResponse || {};
+                  const checkoutUrl = rr.checkoutUrl || rr?.providerResponse?.checkoutUrl;
+                  const qrCode = rr.qrCode || rr?.providerResponse?.qrCode;
+                  return (
+                    <div key={p.id} style={{ border: "1px solid #222", borderRadius: 6, padding: 8, fontSize: 13 }}>
+                      <div><b>{p.status}</b> · {p.provider} · {p.amount} {p.currency}</div>
+                      <div style={{ opacity: 0.8, fontSize: 12 }}>ID: {p.id}{p.providerPaymentId ? ` · Provider: ${p.providerPaymentId}` : ""}</div>
+                      {checkoutUrl && <div style={{ fontSize: 12, marginTop: 4 }}>Checkout: <a href={checkoutUrl} target="_blank" rel="noreferrer">{checkoutUrl}</a></div>}
+                      {qrCode && <div style={{ fontSize: 12, marginTop: 2, wordBreak: "break-all" }}>PIX/QR: {qrCode}</div>}
+                      {p.status === "PENDING" && p.provider === "mock" && (
+                        <div style={{ marginTop: 6 }}>
+                          <button onClick={() => simulateConfirm(p.id)} disabled={busy===`confirm:${p.id}`}>
+                            {busy===`confirm:${p.id}` ? "Confirming..." : "Simulate confirmation"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
                 {!detail?.payments?.length && <p style={{ opacity: 0.8 }}>No payments recorded.</p>}
               </div>
             </>
