@@ -21,6 +21,8 @@ export class PaymentsService {
     const order = await this.prisma.order.findUnique({ where: { id: body.orderId }, include: { quote: true, payments: true } });
     if (!order) throw new NotFoundException('Order not found');
     if (['CANCELLED', 'COMPLETED'].includes(order.status)) throw new BadRequestException('Cannot create payment for closed order');
+    const confirmed = (order.payments || []).find((p: any) => p.status === 'CONFIRMED');
+    if (confirmed) return this.get(confirmed.id);
     const pending = (order.payments || []).find((p: any) => p.status === 'PENDING');
     if (pending) return this.get(pending.id);
     const amount = Number(body.amount ?? order.quote?.total ?? 0);
