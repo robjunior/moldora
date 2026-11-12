@@ -55,13 +55,17 @@ export class PaymentsService {
     const payment = await this.prisma.payment.findFirst({ where: { provider, providerPaymentId: event.providerPaymentId } });
     if (!payment) return { ok: true, ignored: 'payment_not_found' };
     const incomingStatus = event.status || payment.status;
+    if (payment.status === 'REFUNDED') return { ok: true, ignored: 'payment_refunded', payment: await this.get(payment.id) };
+    if (incomingStatus === 'CONFIRMED' && !['PENDING', 'CONFIRMED'].includes(payment.status)) {
+      return { ok: true, ignored: 'invalid_confirm_transition', payment: await this.get(payment.id) };
+    }
     if (payment.status === 'CONFIRMED' && incomingStatus === 'CONFIRMED') return { ok: true, idempotent: true, payment: await this.get(payment.id) };
     if (event.amount != null && Number(event.amount) !== Number(payment.amount)) {
       await this.prisma.auditLog.create({ data: { action: 'PAYMENT_AMOUNT_MISMATCH', entityType: 'Payment', entityId: payment.id, metadata: { expected: String(payment.amount), received: String(event.amount) } as any } });
       throw new BadRequestException('Payment amount mismatch');
     }
     const updated = await this.prisma.payment.update({ where: { id: payment.id }, data: { status: (incomingStatus as any) || payment.status, paidAt: incomingStatus === 'CONFIRMED' ? new Date() : payment.paidAt, webhookEvents: payload as any } });
-    if (incomingStatus === 'CONFIRMED') {
+    if (incomingStatus === 'CONFIRMED' && payment.status !== 'CONFIRMED') {
       await this.prisma.order.update({ where: { id: payment.orderId }, data: { status: 'PAID' } });
       await this.prisma.productionLog.create({ data: { orderId: payment.orderId, status: 'PAID', message: `Payment confirmed via ${provider} webhook` } });
     }
@@ -71,6 +75,8 @@ export class PaymentsService {
   async simulateConfirm(id: string) {
     const payment = await this.get(id);
     if (payment.provider !== 'mock') throw new BadRequestException('Simulated confirmation is only supported for mock payments');
+    if (payment.status === 'CONFIRMED') return this.get(payment.id);
+    if (payment.status !== 'PENDING') throw new BadRequestException('Only pending payments can be confirmed');
     const payload = {
       id: payment.providerPaymentId || payment.id,
       data: { id: payment.providerPaymentId || payment.id },
