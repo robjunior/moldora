@@ -75,7 +75,7 @@ export class PaymentsService {
   async simulateConfirm(id: string) {
     const payment = await this.get(id);
     if (payment.provider !== 'mock') throw new BadRequestException('Simulated confirmation is only supported for mock payments');
-    if (payment.status === 'CONFIRMED') return this.get(payment.id);
+    if (payment.status === 'CONFIRMED') return { ok: true, idempotent: true, payment: await this.get(payment.id) };
     if (payment.status !== 'PENDING') throw new BadRequestException('Only pending payments can be confirmed');
     const payload = {
       id: payment.providerPaymentId || payment.id,
