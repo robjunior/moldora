@@ -116,4 +116,24 @@ export class PaymentsService {
     });
     return this.get(updated.id);
   }
+
+  async cancel(id: string) {
+    const payment = await this.get(id);
+    if (payment.provider !== 'mock') throw new BadRequestException('Cancellation is only supported for mock payments');
+    if (payment.status === 'CANCELLED') return this.get(payment.id);
+    if (payment.status !== 'PENDING') throw new BadRequestException('Only pending payments can be cancelled');
+    await this.prisma.payment.update({
+      where: { id: payment.id },
+      data: { status: 'CANCELLED' as any },
+    });
+    await this.prisma.auditLog.create({
+      data: {
+        action: 'PAYMENT_CANCELLED',
+        entityType: 'Payment',
+        entityId: payment.id,
+        metadata: { amount: Number(payment.amount) } as any,
+      },
+    });
+    return this.get(payment.id);
+  }
 }

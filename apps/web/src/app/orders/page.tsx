@@ -109,6 +109,20 @@ export default function OrdersPage() {
     }
   }
 
+  async function cancelPayment(paymentId: string) {
+    setBusy(`cancel:${paymentId}`); setError(null); setNotice(null);
+    try {
+      await api(`/payments/${paymentId}/cancel`, { method: "POST", body: JSON.stringify({}) });
+      setNotice(`Payment cancelled ${paymentId.slice(0,8)}`);
+      await load();
+      if (selectedId) await loadDetail(selectedId);
+    } catch (e: any) {
+      setError(e.message || "Failed to cancel payment");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <main style={{ padding: 32, maxWidth: 1200, margin: "0 auto" }}>
       <h1>Orders</h1>
@@ -201,9 +215,12 @@ export default function OrdersPage() {
                       {checkoutUrl && <div style={{ fontSize: 12, marginTop: 4 }}>Checkout: <a href={checkoutUrl} target="_blank" rel="noreferrer">{checkoutUrl}</a></div>}
                       {qrCode && <div style={{ fontSize: 12, marginTop: 2, wordBreak: "break-all" }}>PIX/QR: {qrCode}</div>}
 {p.status === "PENDING" && p.provider === "mock" && (
-  <div style={{ marginTop: 6 }}>
-    <button onClick={() => simulateConfirm(p.id)} disabled={busy===`confirm:${p.id}`}>
+  <div style={{ marginTop: 6, display: "flex", gap: 6, flexWrap: "wrap" }}>
+    <button onClick={() => simulateConfirm(p.id)} disabled={busy===`confirm:${p.id}` || busy===`cancel:${p.id}`}>
       {busy===`confirm:${p.id}` ? "Confirming..." : "Simulate confirmation"}
+    </button>
+    <button onClick={() => cancelPayment(p.id)} disabled={busy===`cancel:${p.id}` || busy===`confirm:${p.id}`}>
+      {busy===`cancel:${p.id}` ? "Cancelling..." : "Cancel payment"}
     </button>
   </div>
 )}
