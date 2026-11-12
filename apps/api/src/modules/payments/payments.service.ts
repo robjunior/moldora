@@ -107,6 +107,13 @@ export class PaymentsService {
         metadata: { refundId: refund.id, amount: Number(payment.amount) } as any,
       },
     });
+    await this.prisma.productionLog.create({
+      data: {
+        orderId: payment.orderId,
+        status: payment.order?.status || 'PAID',
+        message: `Payment refunded via ${payment.provider}`,
+      },
+    });
     return this.get(updated.id);
   }
 }
