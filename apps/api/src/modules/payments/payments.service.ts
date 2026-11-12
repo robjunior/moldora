@@ -86,7 +86,9 @@ export class PaymentsService {
   async refund(id: string) {
     const payment = await this.get(id);
     if (payment.provider !== 'mock') throw new BadRequestException('Refund is only supported for mock payments');
-    const refund = await this.provider.refund(id);
+    if (payment.status === 'REFUNDED') return this.get(payment.id);
+    if (payment.status !== 'CONFIRMED') throw new BadRequestException('Only confirmed payments can be refunded');
+    const refund = await this.provider.refund(payment.providerPaymentId || payment.id);
     const updated = await this.prisma.payment.update({
       where: { id: payment.id },
       data: { status: (refund.status === 'REFUNDED' ? 'REFUNDED' : payment.status) as any },
