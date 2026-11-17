@@ -142,6 +142,13 @@ export class PaymentsService {
         metadata: { amount: Number(payment.amount) } as any,
       },
     });
+    await this.prisma.productionLog.create({
+      data: {
+        orderId: payment.orderId,
+        status: payment.order?.status || 'PAID',
+        message: `Payment cancelled via ${payment.provider}`,
+      },
+    });
     return this.get(payment.id);
   }
 }
