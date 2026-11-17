@@ -18,23 +18,22 @@ COPY packages/contracts/package.json packages/contracts/
 COPY packages/pricing/package.json packages/pricing/
 COPY prisma ./prisma
 
-# Install dependencies (best-effort for workspaces present in image)
-RUN bun install || true
+RUN bun install --frozen-lockfile
 
 # Copy source
 COPY . .
 
-# Generate Prisma client
-RUN bunx prisma generate || true
+RUN bunx prisma generate
 
 # Optional DragonFruit server assets (provided on the deployment server)
 COPY docker/dragonfruit ./docker/dragonfruit
 RUN mkdir -p /app/config/dragonfruit-profiles /app/config/dragonfruit-plugins /usr/local/bin \
-  && if [ -d ./docker/dragonfruit/bin ]; then cp -a ./docker/dragonfruit/bin/. /usr/local/bin/ 2>/dev/null || true; fi \
-  && if [ -d ./docker/dragonfruit/profiles ]; then cp -a ./docker/dragonfruit/profiles/. /app/config/dragonfruit-profiles/ 2>/dev/null || true; fi \
-  && if [ -d ./docker/dragonfruit/plugins ]; then cp -a ./docker/dragonfruit/plugins/. /app/config/dragonfruit-plugins/ 2>/dev/null || true; fi \
-  && chmod +x /usr/local/bin/* 2>/dev/null || true \
-  && if [ -f ./docker/dragonfruit/install.sh ]; then chmod +x ./docker/dragonfruit/install.sh && ./docker/dragonfruit/install.sh; fi
+  && cp -a ./docker/dragonfruit/bin/. /usr/local/bin/ \
+  && cp -a ./docker/dragonfruit/profiles/. /app/config/dragonfruit-profiles/ \
+  && cp -a ./docker/dragonfruit/plugins/. /app/config/dragonfruit-plugins/ \
+  && find /usr/local/bin -maxdepth 1 -type f -exec chmod +x {} + \
+  && chmod +x ./docker/dragonfruit/install.sh \
+  && ./docker/dragonfruit/install.sh
 
 ENV NODE_ENV=production \
     DRAGONFRUIT_CLI_PATH=/usr/local/bin/dragonfruit \

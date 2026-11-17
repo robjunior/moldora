@@ -14,7 +14,7 @@
 
 ## Sprint 1 — Foundation
 - [~] INF-01 Base monorepo structure (`apps/api`, `apps/web`, `apps/worker`, `packages/*`, `prisma/`, `docs/`, `docker/`)
-- [~] INF-02 Docker Compose (postgres, redis, n8n active; minio commented out due to registry block in environment; worker and CLI diagnostic images wired; api/web containers pending)
+- [~] INF-02 Docker Compose (postgres, redis, n8n active; minio commented out due to registry block in environment; worker and CLI diagnostic images wired with fail-fast builds; api/web containers pending)
 - [x] INF-03 PostgreSQL + Prisma schema synced (`db push`) and seed applied (`prisma/seed.ts`: admin, material, printer, profile)
 - [~] INF-04 Auth MVP (guard `SimpleAuthGuard` + `@Public()`; all non-public routes require bearer auth; optional `API_AUTH_TOKENS_JSON` maps tokens to roles; `/auth/me` exposes current role) — full Auth.js/session integration pending
 - [~] INF-05 Base authorization/RBAC (authenticated role identity plus `@Roles()` policy; settings pricing and material/printer mutations are ADMIN-only; broader route policy and full roles pending)
@@ -70,6 +70,7 @@
 - Route-level RBAC smoke (temp DB/Redis, built API): customer token could read pricing (`200`) but was denied pricing mutation (`403 Insufficient role`); admin token updated pricing (`200`); API/web/worker typechecks + API build passed.
 - Catalog RBAC smoke (temp DB/Redis, built API): customer token could list materials (`200`) but material/printer writes returned `403 Insufficient role`; admin token created both catalog records (`201`); API/web/worker typechecks + API build passed.
 - DragonFruit container validation: `docker compose config --quiet`, entrypoint shell syntax, and `docker build -f docker/dragonfruit.Dockerfile` passed; CLI-only image fails clearly with exit `127` when the proprietary binary is absent; `dragonfruit-cli` Compose service is opt-in via `--profile dragonfruit`.
+- Worker container validation: `docker compose config --quiet` and `docker build -f docker/worker.Dockerfile` passed with frozen Bun lockfile install and Prisma generation; image contains configured profile/plugin directories and `DRAGONFRUIT_CLI_PATH`.
 - Mock cancellation production-log smoke (temp DB/Redis, built API): pending mock payment cancellation set `CANCELLED`, created one `Payment cancelled via mock` production log, and remained idempotent on repeat; fixture state was restored; API/web/worker typechecks + API build passed.
 
 ## Blockers/environment
