@@ -39,7 +39,7 @@
 
 ## Sprint 5 — Orders/Production/Automation
 - [x] ORD-01/02/03 (partial): order creation from approved quote, listing/detail with quote/customer/payments/logs, guarded status transitions (`PENDING→AWAITING_PAYMENT→PAID→IN_PRODUCTION→COMPLETED`, `CANCELLED`), manual status updates with notes, `production_logs`; web Orders page with detail panel, production log and payment history, note-aware status actions. Automated/role-based production workflow and richer operational tooling pending.
-- [~] N8N-01/02 base n8n infra active; event emission/consumption and workflows pending
+- [~] N8N-01/02 base n8n infra active; configured non-blocking payment lifecycle webhook emission added (`payment.confirmed`, `payment.refunded`, `payment.cancelled`) with secret header and timeout; workflow consumption/UI pending
 
 ## Sprint 6 — Dashboard/Reports/Quality
 - [~] DASH-01/02: `/api/v1/dashboard` endpoint with indicators/recent items and web pages connected to API for dashboard/customers/quotes/orders (API-validated smoke); richer UI/reporting pending
@@ -72,6 +72,7 @@
 - DragonFruit container validation: `docker compose config --quiet`, entrypoint shell syntax, and `docker build -f docker/dragonfruit.Dockerfile` passed; CLI-only image fails clearly with exit `127` when the proprietary binary is absent; `dragonfruit-cli` Compose service is opt-in via `--profile dragonfruit`.
 - Worker container validation: `docker compose config --quiet` and `docker build -f docker/worker.Dockerfile` passed with frozen Bun lockfile install and Prisma generation; image contains configured profile/plugin directories and `DRAGONFRUIT_CLI_PATH`.
 - Mock cancellation production-log smoke (temp DB/Redis, built API): pending mock payment cancellation set `CANCELLED`, created one `Payment cancelled via mock` production log, and remained idempotent on repeat; fixture state was restored; API/web/worker typechecks + API build passed.
+- n8n automation smoke: API build passed; local webhook receiver confirmed `POST` delivery, `x-print3d-webhook-secret`, event envelope, and payload; unset `N8N_BASE_URL` confirmed emission is disabled without affecting callers.
 
 ## Blockers/environment
 - **DragonFruit CLI missing** in this environment — slicing is validated in `mock` mode only; real PoC requires a container/image with the CLI + authorized profiles/plugins.

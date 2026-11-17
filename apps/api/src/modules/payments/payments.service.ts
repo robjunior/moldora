@@ -1,11 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AutomationService } from '../../automation.service';
 import { MockPaymentProvider, PaymentProvider } from './payment-provider';
 
 @Injectable()
 export class PaymentsService {
   private provider: PaymentProvider;
-  constructor(private prisma: PrismaService) {
+  constructor(private prisma: PrismaService, private automation: AutomationService) {
     this.provider = new MockPaymentProvider();
   }
 
@@ -76,6 +77,7 @@ export class PaymentsService {
     if (incomingStatus === 'CONFIRMED' && payment.status !== 'CONFIRMED') {
       await this.prisma.order.update({ where: { id: payment.orderId }, data: { status: 'PAID' } });
       await this.prisma.productionLog.create({ data: { orderId: payment.orderId, status: 'PAID', message: `Payment confirmed via ${provider} webhook` } });
+      void this.automation.emit('payment.confirmed', { paymentId: payment.id, orderId: payment.orderId, provider, amount: Number(payment.amount), currency: payment.currency });
     }
     return { ok: true, payment: await this.get(updated.id) };
   }
@@ -122,6 +124,7 @@ export class PaymentsService {
         message: `Payment refunded via ${payment.provider}`,
       },
     });
+    void this.automation.emit('payment.refunded', { paymentId: payment.id, orderId: payment.orderId, provider: payment.provider, amount: Number(payment.amount), currency: payment.currency });
     return this.get(updated.id);
   }
 
@@ -149,6 +152,7 @@ export class PaymentsService {
         message: `Payment cancelled via ${payment.provider}`,
       },
     });
+    void this.automation.emit('payment.cancelled', { paymentId: payment.id, orderId: payment.orderId, provider: payment.provider, amount: Number(payment.amount), currency: payment.currency });
     return this.get(payment.id);
   }
 }

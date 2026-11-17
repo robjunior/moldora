@@ -16,10 +16,12 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { SimpleAuthGuard } from './common/simple-auth.guard';
+import { AutomationModule } from './automation.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    AutomationModule,
     PrismaModule,
     CustomersModule,
     SlicingModule,
