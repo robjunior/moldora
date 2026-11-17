@@ -16,6 +16,16 @@ docker compose build worker
 docker compose up -d postgres redis worker
 ```
 
+For a CLI-only diagnostic container:
+
+```bash
+docker compose --profile dragonfruit build dragonfruit-cli
+docker compose --profile dragonfruit run --rm dragonfruit-cli --help
+docker compose --profile dragonfruit run --rm dragonfruit-cli --version
+```
+
+The diagnostic container fails with exit code `127` when the CLI binary is absent instead of silently succeeding.
+
 Configure `DRAGONFRUIT_CLI_PATH` (default `/usr/local/bin/dragonfruit` in the server image), `DRAGONFRUIT_MODE=cli|auto`, and `DRAGONFRUIT_CLI_ATTEMPTS_JSON` if the real CLI args/JSON differ from defaults. See `docs/ops/deploy-dragonfruit-server.md` and `docs/poc/dragonfruit-cli.md`.
 
 > Do not commit proprietary binaries or licensed assets unless you are allowed to. Keep server-specific binaries on the deployment server or in a private artifact store.

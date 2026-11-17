@@ -8,5 +8,7 @@ WORKDIR /work
 COPY docker/dragonfruit/bin/ /usr/local/bin/
 COPY docker/dragonfruit/profiles/ /app/config/dragonfruit-profiles/
 COPY docker/dragonfruit/plugins/ /app/config/dragonfruit-plugins/
-RUN chmod +x /usr/local/bin/* 2>/dev/null || true
-CMD ["sh", "-c", "if command -v dragonfruit >/dev/null 2>&1; then dragonfruit --help || true; else echo 'DragonFruit CLI not installed. Place binary in docker/dragonfruit/bin/ or use docker/worker.Dockerfile.'; exit 1; fi"]
+COPY docker/dragonfruit/entrypoint.sh /usr/local/bin/dragonfruit-entrypoint
+RUN chmod +x /usr/local/bin/*
+ENTRYPOINT ["/usr/local/bin/dragonfruit-entrypoint"]
+CMD ["--help"]
