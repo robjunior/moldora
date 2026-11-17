@@ -17,7 +17,7 @@
 - [~] INF-02 Docker Compose (postgres, redis, n8n active; minio commented out due to registry block in environment; api/web/worker containers pending)
 - [x] INF-03 PostgreSQL + Prisma schema synced (`db push`) and seed applied (`prisma/seed.ts`: admin, material, printer, profile)
 - [~] INF-04 Auth MVP (guard `SimpleAuthGuard` + `@Public()`; all non-public routes require bearer auth; optional `API_AUTH_TOKENS_JSON` maps tokens to roles; `/auth/me` exposes current role) — full Auth.js/session integration pending
-- [~] INF-05 Base authorization/RBAC (authenticated role identity now available; route-level role policy and full roles pending)
+- [~] INF-05 Base authorization/RBAC (authenticated role identity plus `@Roles()` policy; settings pricing mutation is ADMIN-only; broader route policy and full roles pending)
 - [~] INF-06 Storage (local structure + file registration via API; MinIO/S3 integration and temporary URLs pending)
 - [~] INF-07 Observability/audit (`AuditLog` table, `SystemSetting`; base interceptor/util created, full global integration and structured logs pending)
 - [~] CRM-01/02/03 Customers API CRUD/archive + placeholder web pages (full functional UI/search/history pending)
@@ -67,6 +67,7 @@
 - Closed-order payment webhook smoke (temp DB/Redis, built API): confirmation webhook for a payment whose order was temporarily `COMPLETED` returned `ignored: order_closed`; payment stayed `PENDING`, order stayed `COMPLETED`, then fixture state was restored; API/web/worker typechecks + API build passed.
 - Auth guard smoke (temp DB/Redis, built API): public `/api/v1/health` returned `200` without credentials; protected `/api/v1/customers` returned `401` without/with wrong token and `200` with `Bearer mvp-test-token`; API/web/worker typechecks + API build passed.
 - Role-token auth smoke (temp DB/Redis, built API): `/api/v1/auth/me` returned `ADMIN` for `admin-token`, `CUSTOMER` for `customer-token`, and `401` for missing/unknown tokens; public health remained `200`; API/web/worker typechecks + API build passed.
+- Route-level RBAC smoke (temp DB/Redis, built API): customer token could read pricing (`200`) but was denied pricing mutation (`403 Insufficient role`); admin token updated pricing (`200`); API/web/worker typechecks + API build passed.
 - Mock cancellation production-log smoke (temp DB/Redis, built API): pending mock payment cancellation set `CANCELLED`, created one `Payment cancelled via mock` production log, and remained idempotent on repeat; fixture state was restored; API/web/worker typechecks + API build passed.
 
 ## Blockers/environment
