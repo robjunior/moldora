@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { HealthController } from './health.controller';
+import { AuthController } from './auth.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { SlicingModule } from './modules/slicing/slicing.module';
@@ -32,7 +33,7 @@ import { SimpleAuthGuard } from './common/simple-auth.guard';
     DashboardModule,
     StorageModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, AuthController],
   providers: [
     { provide: APP_GUARD, useClass: SimpleAuthGuard },
   ],
