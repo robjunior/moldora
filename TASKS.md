@@ -16,7 +16,7 @@
 - [~] INF-01 Base monorepo structure (`apps/api`, `apps/web`, `apps/worker`, `packages/*`, `prisma/`, `docs/`, `docker/`)
 - [~] INF-02 Docker Compose (postgres, redis, n8n active; minio commented out due to registry block in environment; api/web/worker containers pending)
 - [x] INF-03 PostgreSQL + Prisma schema synced (`db push`) and seed applied (`prisma/seed.ts`: admin, material, printer, profile)
-- [~] INF-04 Auth MVP (guard `SimpleAuthGuard` + `@Public()`; dev bypass if `ADMIN_API_TOKEN` absent, Bearer token if set) — full Auth.js/session integration pending
+- [~] INF-04 Auth MVP (guard `SimpleAuthGuard` + `@Public()`; all non-public routes require `Bearer <ADMIN_API_TOKEN>`) — full Auth.js/session integration pending
 - [~] INF-05 Base authorization/RBAC (global guard ready to harden; full roles pending)
 - [~] INF-06 Storage (local structure + file registration via API; MinIO/S3 integration and temporary URLs pending)
 - [~] INF-07 Observability/audit (`AuditLog` table, `SystemSetting`; base interceptor/util created, full global integration and structured logs pending)
@@ -65,6 +65,7 @@
 - Mock payment cancel smoke (temp DB/Redis, built API): created pending mock payment, `POST /api/v1/payments/:id/cancel` set `CANCELLED` with `PAYMENT_CANCELLED` audit (idempotent on repeat), cancel on confirmed payment rejected `400 Only pending payments can be cancelled`; API/web/worker typechecks + API build passed.
 - Payment create reuse smoke (temp DB/Redis, built API): `POST /api/v1/payments` for order with existing `CONFIRMED` payment returned that payment (no duplicate created); API/web/worker typechecks + API build passed.
 - Closed-order payment webhook smoke (temp DB/Redis, built API): confirmation webhook for a payment whose order was temporarily `COMPLETED` returned `ignored: order_closed`; payment stayed `PENDING`, order stayed `COMPLETED`, then fixture state was restored; API/web/worker typechecks + API build passed.
+- Auth guard smoke (temp DB/Redis, built API): public `/api/v1/health` returned `200` without credentials; protected `/api/v1/customers` returned `401` without/with wrong token and `200` with `Bearer mvp-test-token`; API/web/worker typechecks + API build passed.
 - Mock cancellation production-log smoke (temp DB/Redis, built API): pending mock payment cancellation set `CANCELLED`, created one `Payment cancelled via mock` production log, and remained idempotent on repeat; fixture state was restored; API/web/worker typechecks + API build passed.
 
 ## Blockers/environment

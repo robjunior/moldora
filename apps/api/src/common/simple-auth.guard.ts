@@ -2,13 +2,6 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from './public.decorator';
 
-/**
- * MVP auth guard.
- * - Public routes allowed via @Public().
- * - If ADMIN_API_TOKEN unset (dev), allows but marks req.authBypassed=true.
- * - If set, requires Authorization: Bearer <token>.
- * Replace with full Auth.js/session/JWT RBAC for production.
- */
 @Injectable()
 export class SimpleAuthGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
@@ -20,11 +13,7 @@ export class SimpleAuthGuard implements CanActivate {
     if (isPublic) return true;
     const req = context.switchToHttp().getRequest();
     const required = process.env.ADMIN_API_TOKEN;
-    if (!required) {
-      req.authBypassed = true;
-      req.user = { role: 'ADMIN', dev: true };
-      return true;
-    }
+    if (!required) throw new UnauthorizedException('API authentication is not configured');
     const auth = req.headers['authorization'] || '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
     if (!token || token !== required) throw new UnauthorizedException('Invalid or missing token');
