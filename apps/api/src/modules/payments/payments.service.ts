@@ -57,6 +57,12 @@ export class PaymentsService {
     const payment = await this.prisma.payment.findFirst({ where: { provider, providerPaymentId: event.providerPaymentId } });
     if (!payment) return { ok: true, ignored: 'payment_not_found' };
     const incomingStatus = event.status || payment.status;
+    if (incomingStatus === 'CONFIRMED') {
+      const order = await this.prisma.order.findUnique({ where: { id: payment.orderId }, select: { status: true } });
+      if (order && ['CANCELLED', 'COMPLETED'].includes(order.status)) {
+        return { ok: true, ignored: 'order_closed', payment: await this.get(payment.id) };
+      }
+    }
     if (payment.status === 'REFUNDED') return { ok: true, ignored: 'payment_refunded', payment: await this.get(payment.id) };
     if (incomingStatus === 'CONFIRMED' && !['PENDING', 'CONFIRMED'].includes(payment.status)) {
       return { ok: true, ignored: 'invalid_confirm_transition', payment: await this.get(payment.id) };
